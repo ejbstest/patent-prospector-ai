@@ -36,6 +36,7 @@ export function Step6GeographicScope({ onNext, onBack }: Step6GeographicScopePro
 
   const form = useForm({
     resolver: zodResolver(geographicScopeSchema),
+    mode: 'onChange',
     defaultValues: {
       targetMarkets: formData.targetMarkets || [],
       priorityJurisdiction: formData.priorityJurisdiction || '',
