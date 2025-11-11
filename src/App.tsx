@@ -11,6 +11,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import NewAnalysis from "./pages/NewAnalysis";
 import Analyses from "./pages/Analyses";
+import AnalysisDetail from "./pages/AnalysisDetail";
 import Settings from "./pages/Settings";
 import Billing from "./pages/Billing";
 import NotFound from "./pages/NotFound";
@@ -46,6 +47,13 @@ const App = () => (
               <ProtectedRoute>
                 <DashboardLayout>
                   <Analyses />
+                </DashboardLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard/analysis/:id" element={
+              <ProtectedRoute>
+                <DashboardLayout>
+                  <AnalysisDetail />
                 </DashboardLayout>
               </ProtectedRoute>
             } />
