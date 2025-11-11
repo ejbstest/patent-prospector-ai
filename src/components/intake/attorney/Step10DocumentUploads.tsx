@@ -26,10 +26,11 @@ export function Step10DocumentUploads({ onNext, onBack }: Step10DocumentUploadsP
   // Ensure uploadedFiles is always an array
   const uploadedFiles = Array.isArray(formData.uploadedFiles) ? formData.uploadedFiles : [];
 
-  const form = useForm({
+  const form = useForm<z.infer<typeof documentUploadsSchema>>({
     resolver: zodResolver(documentUploadsSchema),
+    mode: 'onChange',
     defaultValues: {
-      acceptTerms: formData.acceptTerms || false,
+      acceptTerms: formData.acceptTerms ?? false,
     },
   });
 
@@ -96,7 +97,7 @@ export function Step10DocumentUploads({ onNext, onBack }: Step10DocumentUploadsP
               <FormControl>
                 <Checkbox
                   checked={field.value}
-                  onCheckedChange={field.onChange}
+                  onCheckedChange={(checked) => field.onChange(checked === true)}
                 />
               </FormControl>
               <div className="space-y-1 leading-none">
