@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -54,11 +55,31 @@ export function Step6GeographicScope({ onNext, onBack }: Step6GeographicScopePro
     resolver: zodResolver(geographicScopeSchema),
     mode: 'onChange',
     defaultValues: {
-      targetMarkets: formData.targetMarkets || [],
-      priorityJurisdiction: formData.priorityJurisdiction || '',
-      manufacturingLocations: formData.manufacturingLocations || '',
+      targetMarkets: Array.isArray(formData.targetMarkets) ? formData.targetMarkets : [],
+      priorityJurisdiction: typeof formData.priorityJurisdiction === 'string' ? formData.priorityJurisdiction : '',
+      manufacturingLocations: typeof formData.manufacturingLocations === 'string' ? formData.manufacturingLocations : '',
     },
   });
+
+  useEffect(() => {
+    try {
+      const tm = Array.isArray(form.getValues('targetMarkets')) ? form.getValues('targetMarkets') as string[] : [];
+      const pj = form.getValues('priorityJurisdiction') as string;
+      if (pj && !tm.includes(pj)) {
+        form.setValue('priorityJurisdiction', '', { shouldValidate: true });
+      }
+      console.log('Step6 init', { tm, pj });
+    } catch (err) {
+      console.error('Step6GeographicScope: init error', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    const subscription = form.watch((value, info) => {
+      console.log('Step6 watch', { name: info.name, type: info.type, targetMarkets: value?.targetMarkets, priorityJurisdiction: value?.priorityJurisdiction });
+    });
+    return () => subscription.unsubscribe();
+  }, [form]);
 
   const watchedTargetMarkets = form.watch('targetMarkets');
   const targetMarkets = Array.isArray(watchedTargetMarkets) ? watchedTargetMarkets : [];
