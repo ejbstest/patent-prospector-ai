@@ -203,7 +203,6 @@ export function Step1FirmInfo({ onNext, onBack }: Step1FirmInfoProps) {
         </div>
 
         <StepNavigation
-          onBack={onBack}
           onNext={form.handleSubmit(onSubmit)}
           canGoNext={form.formState.isValid}
         />

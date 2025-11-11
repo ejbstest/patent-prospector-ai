@@ -90,7 +90,7 @@ export default function NewAnalysis() {
   const renderStep = () => {
     switch (currentStep) {
       case 1:
-        return <Step1FirmInfo onNext={handleNext} onBack={handleBack} />;
+        return <Step1FirmInfo onNext={handleNext} onBack={() => {}} />;
       case 2:
         return <Step2InventionOverview onNext={handleNext} onBack={handleBack} />;
       case 3:
