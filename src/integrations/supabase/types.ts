@@ -593,6 +593,7 @@ export type Database = {
         | "reviewing"
         | "complete"
         | "failed"
+        | "preview_ready"
       analysis_type: "standard" | "premium_whitespace"
       app_role: "admin" | "expert" | "user"
       payment_status: "unpaid" | "paid" | "free_trial"
@@ -739,6 +740,7 @@ export const Constants = {
         "reviewing",
         "complete",
         "failed",
+        "preview_ready",
       ],
       analysis_type: ["standard", "premium_whitespace"],
       app_role: ["admin", "expert", "user"],

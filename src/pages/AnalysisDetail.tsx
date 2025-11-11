@@ -20,6 +20,8 @@ import { ActivityFeed } from '@/components/analysis/ActivityFeed';
 import { RiskMeter } from '@/components/analysis/RiskMeter';
 import { ConflictingPatentsTable } from '@/components/analysis/ConflictingPatentsTable';
 import { ClaimChartViewer } from '@/components/analysis/ClaimChartViewer';
+import { FreePreviewReport } from '@/components/analysis/FreePreviewReport';
+import { UpgradeDialog } from '@/components/analysis/UpgradeDialog';
 import { format } from 'date-fns';
 
 export default function AnalysisDetail() {
@@ -29,8 +31,10 @@ export default function AnalysisDetail() {
   const { toast } = useToast();
   const [analysis, setAnalysis] = useState<any>(null);
   const [patents, setPatents] = useState<any[]>([]);
+  const [previewReport, setPreviewReport] = useState<any>(null);
   const [selectedPatent, setSelectedPatent] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
 
   useEffect(() => {
     if (!id || !user) return;
@@ -63,8 +67,19 @@ export default function AnalysisDetail() {
       if (data) setPatents(data);
     };
 
+    const fetchPreview = async () => {
+      const { data } = await supabase
+        .from('preview_reports')
+        .select('*')
+        .eq('analysis_id', id)
+        .single();
+
+      if (data) setPreviewReport(data);
+    };
+
     fetchAnalysis();
     fetchPatents();
+    fetchPreview();
 
     // Subscribe to realtime updates
     const channel = supabase
@@ -120,8 +135,49 @@ export default function AnalysisDetail() {
   };
 
   const isInProgress = ['searching', 'analyzing'].includes(analysis.status);
+  const isPreviewReady = analysis.status === 'preview_ready' && analysis.payment_status === 'unpaid';
   const isComplete = analysis.status === 'complete';
   const isPaid = analysis.payment_status === 'paid';
+
+  // Show free preview report if status is preview_ready and unpaid
+  if (isPreviewReady && previewReport) {
+    return (
+      <div className="space-y-6 pb-8">
+        {/* Header */}
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')}>
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold">{analysis.invention_title}</h1>
+              <div className="flex items-center gap-3 mt-2">
+                <Badge variant="secondary">Free Preview</Badge>
+                <span className="text-sm text-muted-foreground">
+                  Created {format(new Date(analysis.created_at), 'MMM d, yyyy')}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Preview Report */}
+        <FreePreviewReport 
+          preview={previewReport}
+          analysisId={analysis.id}
+          onUpgrade={() => setShowUpgradeDialog(true)}
+        />
+
+        {/* Upgrade Dialog */}
+        <UpgradeDialog
+          open={showUpgradeDialog}
+          onOpenChange={setShowUpgradeDialog}
+          analysisId={analysis.id}
+          patentsFoundCount={previewReport.patents_found_count}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 pb-8">

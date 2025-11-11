@@ -29,6 +29,7 @@ export function UpgradeDialog({ open, onOpenChange, analysisId, patentsFoundCoun
     
     try {
       const amount = tier === 'standard' ? 2500 : 3900;
+      const analysisType = tier === 'premium' ? 'premium_whitespace' : 'standard';
       
       // Update analysis to paid status
       const { error } = await supabase
@@ -36,8 +37,8 @@ export function UpgradeDialog({ open, onOpenChange, analysisId, patentsFoundCoun
         .update({
           payment_status: 'paid',
           amount_paid: amount,
-          analysis_type: tier,
-          status: 'pending_review'
+          analysis_type: analysisType,
+          status: 'reviewing' // Set to reviewing to trigger expert review
         })
         .eq('id', analysisId);
 
