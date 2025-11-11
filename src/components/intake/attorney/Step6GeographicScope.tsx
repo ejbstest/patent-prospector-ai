@@ -62,67 +62,34 @@ export function Step6GeographicScope({ onNext, onBack }: Step6GeographicScopePro
   });
 
   useEffect(() => {
-    try {
-      const tm = Array.isArray(form.getValues('targetMarkets')) ? form.getValues('targetMarkets') as string[] : [];
-      const pj = form.getValues('priorityJurisdiction') as string;
-      if (pj && !tm.includes(pj)) {
-        form.setValue('priorityJurisdiction', '', { shouldValidate: true });
-      }
-      console.log('Step6 init', { tm, pj });
-    } catch (err) {
-      console.error('Step6GeographicScope: init error', err);
+    const tm = Array.isArray(form.getValues('targetMarkets')) ? form.getValues('targetMarkets') as string[] : [];
+    const pj = form.getValues('priorityJurisdiction') as string;
+    if (pj && !tm.includes(pj)) {
+      form.setValue('priorityJurisdiction', '', { shouldValidate: true });
     }
   }, []);
-
-  useEffect(() => {
-    const subscription = form.watch((value, info) => {
-      try {
-        console.log('Step6 watch', {
-          name: (info as any)?.name,
-          type: (info as any)?.type,
-          targetMarkets: (value as any)?.targetMarkets,
-          priorityJurisdiction: (value as any)?.priorityJurisdiction,
-        });
-      } catch (e) {
-        console.warn('Step6 watch log error', e);
-      }
-    });
-    return () => {
-      try {
-        if (typeof (subscription as any) === 'function') {
-          (subscription as any)();
-        } else {
-          (subscription as any)?.unsubscribe?.();
-        }
-      } catch {}
-    };
-  }, [form]);
 
   const watchedTargetMarkets = form.watch('targetMarkets');
   const targetMarkets = Array.isArray(watchedTargetMarkets) ? watchedTargetMarkets : [];
 
   const handleToggleMarket = (code: string) => {
-    try {
-      const currentRaw = form.getValues('targetMarkets');
-      const current = Array.isArray(currentRaw) ? currentRaw : [];
-      const priorityJurisdiction = form.getValues('priorityJurisdiction');
+    const currentRaw = form.getValues('targetMarkets');
+    const current = Array.isArray(currentRaw) ? currentRaw : [];
+    const priorityJurisdiction = form.getValues('priorityJurisdiction');
 
-      if (current.includes(code)) {
-        const newMarkets = current.filter((c) => c !== code);
-        form.setValue('targetMarkets', newMarkets, { shouldValidate: true });
+    if (current.includes(code)) {
+      const newMarkets = current.filter((c) => c !== code);
+      form.setValue('targetMarkets', newMarkets, { shouldValidate: true });
 
-        if (priorityJurisdiction === code) {
-          form.setValue('priorityJurisdiction', '', { shouldValidate: true });
-          form.trigger('priorityJurisdiction');
-        }
-      } else {
-        form.setValue('targetMarkets', [...current, code], { shouldValidate: true });
+      if (priorityJurisdiction === code) {
+        form.setValue('priorityJurisdiction', '', { shouldValidate: true });
+        form.trigger('priorityJurisdiction');
       }
-
-      form.trigger('targetMarkets');
-    } catch (err) {
-      console.error('Step6GeographicScope: handleToggleMarket error', err, { code });
+    } else {
+      form.setValue('targetMarkets', [...current, code], { shouldValidate: true });
     }
+
+    form.trigger('targetMarkets');
   };
 
   const onSubmit = (data: z.infer<typeof geographicScopeSchema>) => {
@@ -203,12 +170,8 @@ export function Step6GeographicScope({ onNext, onBack }: Step6GeographicScopePro
                           : 'hover:border-muted-foreground/50'
                       }`}
                         onClick={() => {
-                          try {
-                            field.onChange(market.code);
-                            form.trigger('priorityJurisdiction');
-                          } catch (err) {
-                            console.error('Step6GeographicScope: set priority error', err, { code: market.code });
-                          }
+                          field.onChange(market.code);
+                          form.trigger('priorityJurisdiction');
                         }}
                     >
                       <div className="flex items-center gap-2">
@@ -256,20 +219,8 @@ export function Step6GeographicScope({ onNext, onBack }: Step6GeographicScopePro
         />
 
         <StepNavigation
-          onBack={() => {
-            try {
-              onBack();
-            } catch (err) {
-              console.error('Step6GeographicScope: onBack error', err);
-            }
-          }}
-          onNext={form.handleSubmit((data) => {
-            try {
-              onSubmit(data);
-            } catch (err) {
-              console.error('Step6GeographicScope: onSubmit error', err, { data });
-            }
-          })}
+          onBack={onBack}
+          onNext={form.handleSubmit(onSubmit)}
           canGoNext={form.formState.isValid}
         />
       </form>
