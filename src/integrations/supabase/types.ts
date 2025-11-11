@@ -626,7 +626,7 @@ export type Database = {
         | "preview_ready"
       analysis_type: "standard" | "premium_whitespace"
       app_role: "admin" | "expert" | "user"
-      payment_status: "unpaid" | "paid" | "free_trial"
+      payment_status: "unpaid" | "paid" | "free_trial" | "exemption"
       referral_status: "pending" | "completed" | "credited"
       report_type: "snapshot" | "full" | "premium"
       risk_level: "low" | "medium" | "high" | "critical"
@@ -774,7 +774,7 @@ export const Constants = {
       ],
       analysis_type: ["standard", "premium_whitespace"],
       app_role: ["admin", "expert", "user"],
-      payment_status: ["unpaid", "paid", "free_trial"],
+      payment_status: ["unpaid", "paid", "free_trial", "exemption"],
       referral_status: ["pending", "completed", "credited"],
       report_type: ["snapshot", "full", "premium"],
       risk_level: ["low", "medium", "high", "critical"],

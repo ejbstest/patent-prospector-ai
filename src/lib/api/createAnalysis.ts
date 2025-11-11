@@ -98,20 +98,26 @@ export async function createAnalysis({ userId, formData, isExemption = false }: 
     if (isExemption) {
       console.log('Exemption analysis - triggering workflow immediately:', analysis.id);
       
-      // Trigger the research agent to start the automated workflow
+      // Trigger the start-analysis edge function to orchestrate the workflow
       try {
-        await supabase.functions.invoke('research-agent', {
-          body: {
-            analysis_id: analysis.id,
-            invention_description: inventionDescription,
-            technical_keywords: technicalKeywords,
-            cpc_classifications: cpcClassifications,
-          }
+        const { data: startData, error: startError } = await supabase.functions.invoke('start-analysis', {
+          body: { analysis_id: analysis.id }
         });
-        console.log('Workflow triggered successfully for exemption analysis');
+        
+        if (startError) {
+          console.error('Error starting analysis workflow:', startError);
+          throw startError;
+        }
+        
+        console.log('Workflow triggered successfully for exemption analysis:', startData);
       } catch (workflowError) {
         console.error('Error triggering workflow:', workflowError);
-        // Don't fail the entire creation if workflow trigger fails
+        // Mark analysis as failed if workflow doesn't start
+        await supabase
+          .from('analyses')
+          .update({ status: 'failed' })
+          .eq('id', analysis.id);
+        throw workflowError;
       }
     } else {
       console.log('Analysis created successfully:', analysis.id);

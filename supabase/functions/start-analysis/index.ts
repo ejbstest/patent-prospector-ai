@@ -66,8 +66,8 @@ serve(async (req) => {
       );
     }
 
-    // Check payment status
-    if (analysis.payment_status !== 'paid') {
+    // Check payment status (accept both 'paid' and 'exemption')
+    if (analysis.payment_status !== 'paid' && analysis.payment_status !== 'exemption') {
       console.log(`Analysis ${analysis_id} payment not confirmed (status: ${analysis.payment_status})`);
       return new Response(
         JSON.stringify({ 
