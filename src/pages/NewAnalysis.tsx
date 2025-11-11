@@ -2,35 +2,23 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth';
 import { useIntakeFormStore } from '@/stores/intakeFormStore';
 import { FormProgress } from '@/components/intake/FormProgress';
-import { Step1UserType } from '@/components/intake/Step1UserType';
 import { StepConfirmation } from '@/components/intake/StepConfirmation';
 import { debounce } from '@/lib/utils/formHelpers';
 import { createAnalysis } from '@/lib/api/createAnalysis';
 import { useToast } from '@/hooks/use-toast';
 
-// Novice steps
-import { Step2Product } from '@/components/intake/novice/Step2Product';
-import { Step3Uniqueness } from '@/components/intake/novice/Step3Uniqueness';
-import { Step4Competitors } from '@/components/intake/novice/Step4Competitors';
-import { Step5Regions } from '@/components/intake/novice/Step5Regions';
-import { Step6Files as NoviceStep6Files } from '@/components/intake/novice/Step6Files';
-
-// Intermediate steps
-import { Step2Description } from '@/components/intake/intermediate/Step2Description';
-import { Step3Innovations } from '@/components/intake/intermediate/Step3Innovations';
-import { Step4CPC } from '@/components/intake/intermediate/Step4CPC';
-import { Step5PriorArt } from '@/components/intake/intermediate/Step5PriorArt';
-import { Step6Jurisdictions } from '@/components/intake/intermediate/Step6Jurisdictions';
-import { Step7Files as IntermediateStep7Files } from '@/components/intake/intermediate/Step7Files';
-
-// Expert steps
-import { Step2Disclosure } from '@/components/intake/expert/Step2Disclosure';
-import { Step3Claims } from '@/components/intake/expert/Step3Claims';
-import { Step4Classifications } from '@/components/intake/expert/Step4Classifications';
-import { Step5Assignees } from '@/components/intake/expert/Step5Assignees';
-import { Step6PriorArt as ExpertStep6PriorArt } from '@/components/intake/expert/Step6PriorArt';
-import { Step7Parameters } from '@/components/intake/expert/Step7Parameters';
-import { Step8Files as ExpertStep8Files } from '@/components/intake/expert/Step8Files';
+// Attorney intake steps (11-step flow)
+import { Step1FirmInfo } from '@/components/intake/attorney/Step1FirmInfo';
+import { Step2InventionOverview } from '@/components/intake/attorney/Step2InventionOverview';
+import { Step3TechnicalDetails } from '@/components/intake/attorney/Step3TechnicalDetails';
+import { Step4PriorArt } from '@/components/intake/attorney/Step4PriorArt';
+import { Step5Classifications } from '@/components/intake/attorney/Step5Classifications';
+import { Step6GeographicScope } from '@/components/intake/attorney/Step6GeographicScope';
+import { Step7CompetitiveLandscape } from '@/components/intake/attorney/Step7CompetitiveLandscape';
+import { Step8BusinessContext } from '@/components/intake/attorney/Step8BusinessContext';
+import { Step9AnalysisPreferences } from '@/components/intake/attorney/Step9AnalysisPreferences';
+import { Step10DocumentUploads } from '@/components/intake/attorney/Step10DocumentUploads';
+import { Step11PaymentDelivery } from '@/components/intake/attorney/Step11PaymentDelivery';
 
 export default function NewAnalysis() {
   const { user } = useAuth();
@@ -86,7 +74,7 @@ export default function NewAnalysis() {
     }
   };
 
-  const totalSteps = getTotalSteps();
+  const totalSteps = 11; // Fixed 11-step attorney flow
   const isConfirmation = analysisId !== null;
 
   // Render confirmation
@@ -100,50 +88,40 @@ export default function NewAnalysis() {
 
   // Render current step
   const renderStep = () => {
-    // Step 1: User type
-    if (currentStep === 1) {
-      return <Step1UserType onNext={handleNext} />;
+    switch (currentStep) {
+      case 1:
+        return <Step1FirmInfo onNext={handleNext} onBack={handleBack} />;
+      case 2:
+        return <Step2InventionOverview onNext={handleNext} onBack={handleBack} />;
+      case 3:
+        return <Step3TechnicalDetails onNext={handleNext} onBack={handleBack} />;
+      case 4:
+        return <Step4PriorArt onNext={handleNext} onBack={handleBack} />;
+      case 5:
+        return <Step5Classifications onNext={handleNext} onBack={handleBack} />;
+      case 6:
+        return <Step6GeographicScope onNext={handleNext} onBack={handleBack} />;
+      case 7:
+        return <Step7CompetitiveLandscape onNext={handleNext} onBack={handleBack} />;
+      case 8:
+        return <Step8BusinessContext onNext={handleNext} onBack={handleBack} />;
+      case 9:
+        return <Step9AnalysisPreferences onNext={handleNext} onBack={handleBack} />;
+      case 10:
+        return <Step10DocumentUploads onNext={handleNext} onBack={handleBack} />;
+      case 11:
+        return <Step11PaymentDelivery onNext={handleSubmit} onBack={handleBack} />;
+      default:
+        return null;
     }
-
-    // Novice flow
-    if (formData.userType === 'novice') {
-      if (currentStep === 2) return <Step2Product onNext={handleNext} onBack={handleBack} />;
-      if (currentStep === 3) return <Step3Uniqueness onNext={handleNext} onBack={handleBack} />;
-      if (currentStep === 4) return <Step4Competitors onNext={handleNext} onBack={handleBack} />;
-      if (currentStep === 5) return <Step5Regions onNext={handleNext} onBack={handleBack} />;
-      if (currentStep === 6) return <NoviceStep6Files onNext={handleSubmit} onBack={handleBack} />;
-    }
-
-    // Intermediate flow
-    if (formData.userType === 'intermediate') {
-      if (currentStep === 2) return <Step2Description onNext={handleNext} onBack={handleBack} />;
-      if (currentStep === 3) return <Step3Innovations onNext={handleNext} onBack={handleBack} />;
-      if (currentStep === 4) return <Step4CPC onNext={handleNext} onBack={handleBack} />;
-      if (currentStep === 5) return <Step5PriorArt onNext={handleNext} onBack={handleBack} />;
-      if (currentStep === 6) return <Step6Jurisdictions onNext={handleNext} onBack={handleBack} />;
-      if (currentStep === 7) return <IntermediateStep7Files onNext={handleSubmit} onBack={handleBack} />;
-    }
-
-    // Expert flow
-    if (formData.userType === 'expert') {
-      if (currentStep === 2) return <Step2Disclosure onNext={handleNext} onBack={handleBack} />;
-      if (currentStep === 3) return <Step3Claims onNext={handleNext} onBack={handleBack} />;
-      if (currentStep === 4) return <Step4Classifications onNext={handleNext} onBack={handleBack} />;
-      if (currentStep === 5) return <Step5Assignees onNext={handleNext} onBack={handleBack} />;
-      if (currentStep === 6) return <ExpertStep6PriorArt onNext={handleNext} onBack={handleBack} />;
-      if (currentStep === 7) return <Step7Parameters onNext={handleNext} onBack={handleBack} />;
-      if (currentStep === 8) return <ExpertStep8Files onNext={handleSubmit} onBack={handleBack} />;
-    }
-
-    return null;
   };
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">New IP Analysis</h1>
+        <h1 className="text-3xl font-bold tracking-tight">New FTO Analysis</h1>
         <p className="text-muted-foreground mt-2">
-          Start a comprehensive intellectual property risk assessment
+          White-labeled Freedom to Operate report delivered in 24 hours
         </p>
       </div>
 
