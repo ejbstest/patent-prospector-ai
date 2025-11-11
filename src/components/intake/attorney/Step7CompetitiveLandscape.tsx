@@ -29,15 +29,19 @@ export function Step7CompetitiveLandscape({ onNext, onBack }: Step7CompetitiveLa
   const form = useForm({
     resolver: zodResolver(competitiveLandscapeSchema),
     defaultValues: {
-      directCompetitors: formData.competitors || [],
-      indirectCompetitors: [],
-      marketLeaders: [],
+      directCompetitors: formData.directCompetitors || [],
+      indirectCompetitors: formData.indirectCompetitors || [],
+      marketLeaders: formData.marketLeaders || [],
     },
   });
 
   const onSubmit = (data: z.infer<typeof competitiveLandscapeSchema>) => {
     updateFormData({
-      competitors: data.directCompetitors,
+      directCompetitors: data.directCompetitors,
+      indirectCompetitors: data.indirectCompetitors || [],
+      marketLeaders: data.marketLeaders || [],
+      recentAcquisitions,
+      dominantPatentHolders: dominantHolders,
     });
     onNext();
   };

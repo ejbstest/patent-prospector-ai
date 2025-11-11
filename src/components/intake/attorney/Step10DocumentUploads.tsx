@@ -21,16 +21,19 @@ interface Step10DocumentUploadsProps {
 }
 
 export function Step10DocumentUploads({ onNext, onBack }: Step10DocumentUploadsProps) {
-  const { formData, addFile, removeFile } = useIntakeFormStore();
+  const { formData, addFile, removeFile, updateFormData } = useIntakeFormStore();
 
   const form = useForm({
     resolver: zodResolver(documentUploadsSchema),
     defaultValues: {
-      acceptTerms: false,
+      acceptTerms: formData.acceptTerms || false,
     },
   });
 
   const onSubmit = (data: z.infer<typeof documentUploadsSchema>) => {
+    updateFormData({
+      acceptTerms: data.acceptTerms,
+    });
     onNext();
   };
 

@@ -37,9 +37,9 @@ export function Step6GeographicScope({ onNext, onBack }: Step6GeographicScopePro
   const form = useForm({
     resolver: zodResolver(geographicScopeSchema),
     defaultValues: {
-      targetMarkets: formData.regions || [],
-      priorityJurisdiction: '',
-      manufacturingLocations: '',
+      targetMarkets: formData.targetMarkets || [],
+      priorityJurisdiction: formData.priorityJurisdiction || '',
+      manufacturingLocations: formData.manufacturingLocations || '',
     },
   });
 
@@ -56,6 +56,10 @@ export function Step6GeographicScope({ onNext, onBack }: Step6GeographicScopePro
 
   const onSubmit = (data: z.infer<typeof geographicScopeSchema>) => {
     updateFormData({
+      targetMarkets: data.targetMarkets,
+      priorityJurisdiction: data.priorityJurisdiction,
+      manufacturingLocations: data.manufacturingLocations,
+      // Legacy field for backward compatibility
       regions: data.targetMarkets,
     });
     onNext();

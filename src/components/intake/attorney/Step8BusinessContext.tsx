@@ -50,16 +50,19 @@ export function Step8BusinessContext({ onNext, onBack }: Step8BusinessContextPro
   const form = useForm({
     resolver: zodResolver(businessContextSchema),
     defaultValues: {
-      developmentStage: '',
-      fundingStage: '',
-      fundingTimeline: undefined,
-      launchDate: undefined,
+      developmentStage: formData.developmentStage || '',
+      fundingStage: formData.fundingStage || '',
+      fundingTimeline: formData.fundingTimeline,
+      launchDate: formData.launchDate,
     },
   });
 
   const onSubmit = (data: z.infer<typeof businessContextSchema>) => {
     updateFormData({
-      technicalDescription: formData.technicalDescription || '', // Preserve existing data
+      developmentStage: data.developmentStage,
+      fundingStage: data.fundingStage,
+      fundingTimeline: data.fundingTimeline,
+      launchDate: data.launchDate,
     });
     onNext();
   };

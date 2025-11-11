@@ -29,15 +29,17 @@ export function Step4PriorArt({ onNext, onBack }: Step4PriorArtProps) {
   const form = useForm({
     resolver: zodResolver(priorArtSchema),
     defaultValues: {
-      knownCompetitors: formData.competitors || [],
-      knownPatents: formData.priorArtPatents || [],
+      knownCompetitors: formData.knownCompetitors || [],
+      knownPatents: formData.knownPatents || [],
     },
   });
 
   const onSubmit = (data: z.infer<typeof priorArtSchema>) => {
     updateFormData({
+      knownCompetitors: data.knownCompetitors,
+      knownPatents: data.knownPatents || [],
+      // Legacy fields for backward compatibility
       competitors: data.knownCompetitors,
-      priorArtPatents: data.knownPatents || [],
     });
     onNext();
   };

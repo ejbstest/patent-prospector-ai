@@ -23,7 +23,7 @@ import { Step11PaymentDelivery } from '@/components/intake/attorney/Step11Paymen
 export default function NewAnalysis() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { currentStep, formData, setStep, nextStep, prevStep, getTotalSteps, markSaved, reset } = useIntakeFormStore();
+  const { currentStep, formData, setStep, nextStep, prevStep, markSaved, reset } = useIntakeFormStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [analysisId, setAnalysisId] = useState<string | null>(null);
 

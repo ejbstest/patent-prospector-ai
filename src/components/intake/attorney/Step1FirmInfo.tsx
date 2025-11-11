@@ -30,12 +30,12 @@ export function Step1FirmInfo({ onNext, onBack }: Step1FirmInfoProps) {
   const form = useForm({
     resolver: zodResolver(firmInfoSchema),
     defaultValues: {
-      firmName: formData.productDescription || '', // Reusing existing field temporarily
-      attorneyName: formData.uniqueness || '',
-      barNumber: '',
-      clientCompanyName: formData.technicalDescription || '',
-      reportDeliveryEmail: '',
-      firmPrimaryColor: '#7C3AED',
+      firmName: formData.firmName || '',
+      attorneyName: formData.attorneyName || '',
+      barNumber: formData.barNumber || '',
+      clientCompanyName: formData.clientCompanyName || '',
+      reportDeliveryEmail: formData.reportDeliveryEmail || '',
+      firmPrimaryColor: formData.firmPrimaryColor || '#7C3AED',
     },
   });
 
@@ -52,9 +52,12 @@ export function Step1FirmInfo({ onNext, onBack }: Step1FirmInfoProps) {
 
   const onSubmit = (data: z.infer<typeof firmInfoSchema>) => {
     updateFormData({
-      productDescription: data.firmName, // Temporary mapping
-      uniqueness: data.attorneyName,
-      technicalDescription: data.clientCompanyName,
+      firmName: data.firmName,
+      attorneyName: data.attorneyName,
+      barNumber: data.barNumber,
+      clientCompanyName: data.clientCompanyName,
+      reportDeliveryEmail: data.reportDeliveryEmail,
+      firmPrimaryColor: data.firmPrimaryColor,
     });
     onNext();
   };

@@ -52,8 +52,8 @@ export function Step5Classifications({ onNext, onBack }: Step5ClassificationsPro
   const form = useForm({
     resolver: zodResolver(classificationsSchema),
     defaultValues: {
-      selectedClassifications: formData.cpcCodes || [],
-      primaryDomain: '',
+      selectedClassifications: formData.selectedClassifications || [],
+      primaryDomain: formData.primaryDomain || '',
     },
   });
 
@@ -70,6 +70,10 @@ export function Step5Classifications({ onNext, onBack }: Step5ClassificationsPro
 
   const onSubmit = (data: z.infer<typeof classificationsSchema>) => {
     updateFormData({
+      selectedClassifications: [...data.selectedClassifications, ...manualCodes],
+      manualClassifications: manualCodes,
+      primaryDomain: data.primaryDomain,
+      // Legacy field for backward compatibility
       cpcCodes: [...data.selectedClassifications, ...manualCodes],
     });
     onNext();

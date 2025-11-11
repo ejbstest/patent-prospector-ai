@@ -33,10 +33,10 @@ export function Step9AnalysisPreferences({ onNext, onBack }: Step9AnalysisPrefer
   const form = useForm<z.infer<typeof analysisPreferencesSchema>>({
     resolver: zodResolver(analysisPreferencesSchema),
     defaultValues: {
-      analysisDepth: 'standard',
-      whiteSpaceFocus: true,
-      reportFormats: ['pdf'],
-      turnaroundTime: 'standard',
+      analysisDepth: formData.analysisDepth || 'standard',
+      whiteSpaceFocus: formData.whiteSpaceFocus ?? true,
+      reportFormats: formData.reportFormats || ['pdf'],
+      turnaroundTime: formData.turnaroundTime || 'standard',
     },
   });
 
@@ -73,7 +73,10 @@ export function Step9AnalysisPreferences({ onNext, onBack }: Step9AnalysisPrefer
 
   const onSubmit = (data: z.infer<typeof analysisPreferencesSchema>) => {
     updateFormData({
-      technicalDescription: formData.technicalDescription || '',
+      analysisDepth: data.analysisDepth,
+      whiteSpaceFocus: data.whiteSpaceFocus,
+      reportFormats: data.reportFormats,
+      turnaroundTime: data.turnaroundTime,
     });
     onNext();
   };

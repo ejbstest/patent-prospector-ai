@@ -30,7 +30,7 @@ export function Step3TechnicalDetails({ onNext, onBack }: Step3TechnicalDetailsP
     resolver: zodResolver(technicalDetailsSchema),
     defaultValues: {
       technicalDescription: formData.technicalDescription || '',
-      keyInnovations: formData.innovations || [],
+      keyInnovations: formData.keyInnovations || [],
     },
   });
 
@@ -41,6 +41,8 @@ export function Step3TechnicalDetails({ onNext, onBack }: Step3TechnicalDetailsP
   const onSubmit = (data: z.infer<typeof technicalDetailsSchema>) => {
     updateFormData({
       technicalDescription: data.technicalDescription,
+      keyInnovations: data.keyInnovations,
+      // Legacy field for backward compatibility
       innovations: data.keyInnovations,
     });
     onNext();

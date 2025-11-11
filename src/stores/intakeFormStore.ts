@@ -1,51 +1,85 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type UserType = 'novice' | 'intermediate' | 'expert' | null;
-export type PricingTier = 'free' | 'standard' | 'premium' | null;
-
 export interface UploadedFile {
   file: File;
   label?: string;
   preview?: string;
 }
 
+// Attorney intake form data structure (11-step flow)
 export interface FormData {
-  // Step 1
-  userType: UserType;
+  // Step 1: Firm & Attorney Information
+  firmName?: string;
+  attorneyName?: string;
+  barNumber?: string;
+  clientCompanyName?: string;
+  reportDeliveryEmail?: string;
+  firmPrimaryColor?: string;
+  firmLogoUrl?: string;
   
-  // Novice fields
-  productDescription?: string;
-  uniqueness?: string;
-  competitors?: string[];
-  regions?: string[];
+  // Step 2: Invention Overview
+  inventionTitle?: string;
+  inventionCategory?: string;
+  valueProp?: string;
+  problemBeingSolved?: string;
+  solutionApproach?: string;
+  targetCustomers?: string;
   
-  // Intermediate fields
+  // Step 3: Technical Details
   technicalDescription?: string;
+  keyInnovations?: string[];
+  technicalSpecifications?: Record<string, string>;
+  
+  // Step 4: Prior Art Awareness
+  knownCompetitors?: string[];
+  knownPatents?: string[];
+  researchPapers?: string[];
+  tradePublications?: string[];
+  
+  // Step 5: Patent Classification
+  selectedClassifications?: string[];
+  manualClassifications?: string[];
+  primaryDomain?: string;
+  
+  // Step 6: Geographic Scope
+  targetMarkets?: string[];
+  priorityJurisdiction?: string;
+  manufacturingLocations?: string;
+  
+  // Step 7: Competitive Landscape
+  directCompetitors?: string[];
+  indirectCompetitors?: string[];
+  marketLeaders?: string[];
+  recentAcquisitions?: string[];
+  dominantPatentHolders?: string[];
+  
+  // Step 8: Business Context
+  developmentStage?: string;
+  fundingStage?: string;
+  fundingTimeline?: Date;
+  launchDate?: Date;
+  
+  // Step 9: Analysis Preferences
+  analysisDepth?: 'standard' | 'comprehensive';
+  whiteSpaceFocus?: boolean;
+  reportFormats?: string[];
+  turnaroundTime?: 'standard' | 'priority' | 'rush';
+  
+  // Step 10: Document Uploads
+  uploadedFiles: UploadedFile[];
+  acceptTerms?: boolean;
+  
+  // Step 11: Payment & Delivery (handled separately in payment flow)
+  secondaryEmails?: string[];
+  
+  // Legacy fields (for backward compatibility with createAnalysis)
+  // These will be removed once createAnalysis is fully updated
+  disclosure?: string;
   innovations?: string[];
   cpcCodes?: string[];
-  priorArtPatents?: string[];
-  jurisdictions?: string[];
-  
-  // Expert fields
-  disclosure?: string;
-  claims?: string[];
-  ipcCpcCodes?: string[];
-  assignees?: string[];
-  priorArtReferences?: Array<{
-    patentNumber: string;
-    publicationDate?: string;
-    relevanceNotes?: string;
-  }>;
-  analysisParameters?: {
-    dateRange?: { start: string; end: string };
-    citationDepth?: number;
-    jurisdictionWeights?: Record<string, number>;
-  };
-  
-  // Universal
-  uploadedFiles: UploadedFile[];
-  pricingTier: PricingTier;
+  regions?: string[];
+  competitors?: string[];
 }
 
 interface IntakeFormState {
@@ -63,23 +97,38 @@ interface IntakeFormState {
   removeFile: (index: number) => void;
   markSaved: () => void;
   reset: () => void;
-  getTotalSteps: () => number;
 }
 
 const initialFormData: FormData = {
-  userType: null,
-  competitors: [],
-  regions: [],
+  // Initialize with empty arrays for required fields
+  keyInnovations: [],
+  knownCompetitors: [],
+  knownPatents: [],
+  researchPapers: [],
+  tradePublications: [],
+  selectedClassifications: [],
+  manualClassifications: [],
+  targetMarkets: [],
+  directCompetitors: [],
+  indirectCompetitors: [],
+  marketLeaders: [],
+  recentAcquisitions: [],
+  dominantPatentHolders: [],
+  reportFormats: ['pdf'],
+  uploadedFiles: [],
+  secondaryEmails: [],
+  
+  // Legacy fields for backward compatibility
   innovations: [],
   cpcCodes: [],
-  priorArtPatents: [],
-  jurisdictions: [],
-  claims: [],
-  ipcCpcCodes: [],
-  assignees: [],
-  priorArtReferences: [],
-  uploadedFiles: [],
-  pricingTier: null,
+  regions: [],
+  competitors: [],
+  
+  // Default values
+  analysisDepth: 'standard',
+  whiteSpaceFocus: true,
+  turnaroundTime: 'standard',
+  firmPrimaryColor: '#7C3AED',
 };
 
 export const useIntakeFormStore = create<IntakeFormState>()(
@@ -127,14 +176,6 @@ export const useIntakeFormStore = create<IntakeFormState>()(
         isDirty: false,
         lastSaved: null,
       }),
-
-      getTotalSteps: () => {
-        const { userType } = get().formData;
-        if (!userType) return 8; // Max possible
-        if (userType === 'novice') return 6; // 1 + 5 steps (no pricing)
-        if (userType === 'intermediate') return 7; // 1 + 6 steps (no pricing)
-        return 9; // expert: 1 + 8 steps (no pricing)
-      },
     }),
     {
       name: 'intake-form-storage',

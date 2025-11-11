@@ -40,18 +40,25 @@ export function Step2InventionOverview({ onNext, onBack }: Step2InventionOvervie
   const form = useForm({
     resolver: zodResolver(inventionOverviewSchema),
     defaultValues: {
-      inventionTitle: formData.disclosure || '',
-      inventionCategory: '',
-      valueProp: '',
-      problemBeingSolved: '',
-      solutionApproach: '',
-      targetCustomers: '',
+      inventionTitle: formData.inventionTitle || '',
+      inventionCategory: formData.inventionCategory || '',
+      valueProp: formData.valueProp || '',
+      problemBeingSolved: formData.problemBeingSolved || '',
+      solutionApproach: formData.solutionApproach || '',
+      targetCustomers: formData.targetCustomers || '',
     },
   });
 
   const onSubmit = (data: z.infer<typeof inventionOverviewSchema>) => {
     updateFormData({
-      disclosure: data.inventionTitle, // Temporary mapping
+      inventionTitle: data.inventionTitle,
+      inventionCategory: data.inventionCategory,
+      valueProp: data.valueProp,
+      problemBeingSolved: data.problemBeingSolved,
+      solutionApproach: data.solutionApproach,
+      targetCustomers: data.targetCustomers,
+      // Legacy field for backward compatibility with createAnalysis
+      disclosure: data.inventionTitle,
     });
     onNext();
   };
