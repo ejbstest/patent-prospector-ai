@@ -22,7 +22,10 @@ import AdminAnalytics from "./pages/admin/Analytics";
 import AdminSystem from "./pages/admin/System";
 import AdminBilling from "./pages/admin/Billing";
 import AdminSettings from "./pages/admin/Settings";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsOfService from "./pages/TermsOfService";
 import NotFound from "./pages/NotFound";
+import { CookieConsent } from "@/components/CookieConsent";
 
 const queryClient = new QueryClient();
 
@@ -37,6 +40,8 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/signup" element={<SignUp />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+            <Route path="/terms-of-service" element={<TermsOfService />} />
             
             {/* User Dashboard Routes */}
             <Route path="/dashboard" element={
@@ -141,6 +146,7 @@ const App = () => (
             {/* Catch-all route - MUST BE LAST */}
             <Route path="*" element={<NotFound />} />
           </Routes>
+          <CookieConsent />
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
