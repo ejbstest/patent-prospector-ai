@@ -9,9 +9,25 @@ import { useIntakeFormStore } from '@/stores/intakeFormStore';
 
 const geographicScopeSchema = z.object({
   targetMarkets: z.array(z.string()).min(1, 'Select at least 1 target market'),
-  priorityJurisdiction: z.string().min(1, 'Priority jurisdiction is required'),
+  priorityJurisdiction: z.string(),
   manufacturingLocations: z.string().optional(),
-});
+}).refine(
+  (data) => {
+    // Priority jurisdiction is required only if target markets are selected
+    if (data.targetMarkets.length > 0 && !data.priorityJurisdiction) {
+      return false;
+    }
+    // Priority jurisdiction must be one of the selected target markets
+    if (data.priorityJurisdiction && !data.targetMarkets.includes(data.priorityJurisdiction)) {
+      return false;
+    }
+    return true;
+  },
+  {
+    message: 'Priority jurisdiction is required and must be one of your selected target markets',
+    path: ['priorityJurisdiction'],
+  }
+);
 
 interface Step6GeographicScopeProps {
   onNext: () => void;
@@ -48,8 +64,16 @@ export function Step6GeographicScope({ onNext, onBack }: Step6GeographicScopePro
 
   const handleToggleMarket = (code: string) => {
     const current = form.getValues('targetMarkets');
+    const priorityJurisdiction = form.getValues('priorityJurisdiction');
+    
     if (current.includes(code)) {
-      form.setValue('targetMarkets', current.filter(c => c !== code), { shouldValidate: true });
+      const newMarkets = current.filter(c => c !== code);
+      form.setValue('targetMarkets', newMarkets, { shouldValidate: true });
+      
+      // Clear priority jurisdiction if it's no longer in selected markets
+      if (priorityJurisdiction === code) {
+        form.setValue('priorityJurisdiction', '', { shouldValidate: true });
+      }
     } else {
       form.setValue('targetMarkets', [...current, code], { shouldValidate: true });
     }
