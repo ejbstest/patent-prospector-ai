@@ -6,6 +6,8 @@ import { StepConfirmation } from '@/components/intake/StepConfirmation';
 import { debounce } from '@/lib/utils/formHelpers';
 import { createAnalysis } from '@/lib/api/createAnalysis';
 import { useToast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
+import { Check } from 'lucide-react';
 
 // Attorney intake steps (11-step flow)
 import { Step1FirmInfo } from '@/components/intake/attorney/Step1FirmInfo';
@@ -23,7 +25,7 @@ import { Step11PaymentDelivery } from '@/components/intake/attorney/Step11Paymen
 export default function NewAnalysis() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { currentStep, formData, setStep, nextStep, prevStep, markSaved, reset } = useIntakeFormStore();
+  const { currentStep, formData, setStep, nextStep, prevStep, markSaved, reset, isDirty, lastSaved } = useIntakeFormStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [analysisId, setAnalysisId] = useState<string | null>(null);
 
@@ -38,11 +40,13 @@ export default function NewAnalysis() {
   }, [formData, markSaved]);
 
   const handleNext = () => {
+    markSaved(); // Auto-save when progressing to next step
     nextStep();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleBack = () => {
+    markSaved(); // Auto-save when going back
     prevStep();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -118,11 +122,19 @@ export default function NewAnalysis() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">New FTO Analysis</h1>
-        <p className="text-muted-foreground mt-2">
-          White-labeled Freedom to Operate report delivered in 24 hours
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">New FTO Analysis</h1>
+          <p className="text-muted-foreground mt-2">
+            White-labeled Freedom to Operate report delivered in 24 hours
+          </p>
+        </div>
+        {!isDirty && lastSaved && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Check className="h-4 w-4 text-green-500" />
+            <span>Saved {format(lastSaved, 'p')}</span>
+          </div>
+        )}
       </div>
 
       <FormProgress currentStep={currentStep} totalSteps={totalSteps} />
