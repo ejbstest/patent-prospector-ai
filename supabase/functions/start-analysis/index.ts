@@ -54,12 +54,12 @@ serve(async (req) => {
       );
     }
 
-    // Check if analysis is in correct state to start
-    if (analysis.status !== 'submitted') {
-      console.log(`Analysis ${analysis_id} is not in submitted state (current: ${analysis.status})`);
+    // Check current status (allow both 'intake' and legacy 'submitted')
+    if (analysis.status !== 'intake' && analysis.status !== 'submitted') {
+      console.log(`Analysis ${analysis_id} is not in a startable state (current: ${analysis.status})`);
       return new Response(
         JSON.stringify({ 
-          error: 'Analysis must be in submitted state to start',
+          error: 'Analysis must be in intake/submitted state to start',
           current_status: analysis.status 
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

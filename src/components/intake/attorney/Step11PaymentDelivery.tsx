@@ -82,7 +82,7 @@ export function Step11PaymentDelivery({ onNext, onExemption, onBack }: Step11Pay
           <CardContent className="space-y-3">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Analysis Type:</span>
-              <span className="font-medium">Standard FTO Analysis</span>
+              <span className="font-medium">{formData.analysisDepth === 'comprehensive' ? 'Comprehensive FTO Analysis' : 'Standard FTO Analysis'}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Turnaround:</span>

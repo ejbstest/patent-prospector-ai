@@ -58,7 +58,7 @@ export async function createAnalysis({ userId, formData, isExemption = false }: 
         analysis_type: analysisType,
         payment_status: paymentStatus,
         amount_paid: amountPaid,
-        status: 'submitted', // Start in submitted state, will move to queued after payment
+        status: 'intake', // Start in intake state, orchestrator will transition
         progress_percentage: 0,
       }] as any)
       .select()
@@ -66,32 +66,39 @@ export async function createAnalysis({ userId, formData, isExemption = false }: 
 
     if (analysisError) throw analysisError;
 
-    // Upload files to storage
-    if (formData.uploadedFiles.length > 0) {
-      const uploadPromises = formData.uploadedFiles.map(async ({ file }) => {
-        const filePath = `${userId}/${analysis.id}/${file.name}`;
-        
-        const { error: uploadError } = await supabase.storage
-          .from('analysis-documents')
-          .upload(filePath, file);
+    // Upload files to storage (best-effort, non-blocking)
+    if (Array.isArray(formData.uploadedFiles) && formData.uploadedFiles.length > 0) {
+      const uploadTasks = formData.uploadedFiles.map(async ({ file }) => {
+        try {
+          const filePath = `${userId}/${analysis.id}/${file.name}`;
+          const { error: uploadError } = await supabase.storage
+            .from('analysis-documents')
+            .upload(filePath, file);
 
-        if (uploadError) throw uploadError;
+          if (uploadError) {
+            console.warn('File upload failed (continuing):', uploadError);
+            return;
+          }
 
-        // Create document record
-        const { error: docError } = await supabase
-          .from('uploaded_documents')
-          .insert({
-            analysis_id: analysis.id,
-            file_name: file.name,
-            file_path: filePath,
-            file_size: file.size,
-            mime_type: file.type,
-          });
+          const { error: docError } = await supabase
+            .from('uploaded_documents')
+            .insert({
+              analysis_id: analysis.id,
+              file_name: file.name,
+              file_path: filePath,
+              file_size: file.size,
+              mime_type: file.type,
+            });
 
-        if (docError) throw docError;
+          if (docError) {
+            console.warn('Document record insert failed (continuing):', docError);
+          }
+        } catch (e) {
+          console.warn('Unexpected error during file upload (continuing):', e);
+        }
       });
 
-      await Promise.all(uploadPromises);
+      await Promise.allSettled(uploadTasks);
     }
 
     // Trigger workflow if exemption (immediate) or after payment confirmation
