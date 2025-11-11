@@ -76,9 +76,26 @@ export function Step6GeographicScope({ onNext, onBack }: Step6GeographicScopePro
 
   useEffect(() => {
     const subscription = form.watch((value, info) => {
-      console.log('Step6 watch', { name: info.name, type: info.type, targetMarkets: value?.targetMarkets, priorityJurisdiction: value?.priorityJurisdiction });
+      try {
+        console.log('Step6 watch', {
+          name: (info as any)?.name,
+          type: (info as any)?.type,
+          targetMarkets: (value as any)?.targetMarkets,
+          priorityJurisdiction: (value as any)?.priorityJurisdiction,
+        });
+      } catch (e) {
+        console.warn('Step6 watch log error', e);
+      }
     });
-    return () => subscription.unsubscribe();
+    return () => {
+      try {
+        if (typeof (subscription as any) === 'function') {
+          (subscription as any)();
+        } else {
+          (subscription as any)?.unsubscribe?.();
+        }
+      } catch {}
+    };
   }, [form]);
 
   const watchedTargetMarkets = form.watch('targetMarkets');
