@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, User, Shield, CreditCard, Users, Zap, Settings2, AlertTriangle } from "lucide-react";
+import { Loader2, User, Shield, CreditCard, Users, Zap, Settings2, AlertTriangle, Download } from "lucide-react";
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -151,6 +151,61 @@ export default function Settings() {
     });
     
     setDeleteInput("");
+  };
+
+  const handleExportData = async () => {
+    try {
+      // Fetch all user data
+      const [profileData, analysesData] = await Promise.all([
+        supabase.from("profiles").select("*").eq("id", user?.id).single(),
+        supabase.from("analyses").select("*").eq("user_id", user?.id)
+      ]);
+
+      const exportData = {
+        exported_at: new Date().toISOString(),
+        profile: profileData.data,
+        analyses: analysesData.data
+      };
+
+      // Create and download JSON file
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `aegis-data-export-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: "Success",
+        description: "Your data has been exported successfully"
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to export data",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleDeleteAllData = async () => {
+    try {
+      await supabase.from("analyses").delete().eq("user_id", user?.id);
+
+      toast({
+        title: "Success",
+        description: "All your data has been deleted"
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete data",
+        variant: "destructive"
+      });
+    }
   };
 
   if (loading) {
@@ -500,6 +555,60 @@ export default function Settings() {
               <div className="space-y-2">
                 <Label>Default Jurisdictions</Label>
                 <p className="text-sm text-muted-foreground">Pre-select jurisdictions for new analyses</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* GDPR Data Export */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Data Privacy</CardTitle>
+              <CardDescription>GDPR compliance - Export or delete your data</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                <div>
+                  <h4 className="font-semibold">Export All Data</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Download all your analyses, reports, and profile data as JSON
+                  </p>
+                </div>
+                <Button variant="outline" onClick={handleExportData}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Export Data
+                </Button>
+              </div>
+
+              <div className="flex items-center justify-between p-4 bg-destructive/10 rounded-lg border border-destructive/20">
+                <div>
+                  <h4 className="font-semibold text-destructive">Delete All Data</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Permanently delete all your analyses and reports (account remains active)
+                  </p>
+                </div>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive">Delete All Data</Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete All Your Data?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will permanently delete all your analyses, reports, and uploaded documents.
+                        Your account will remain active but all data will be lost. This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleDeleteAllData}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        Delete Everything
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             </CardContent>
           </Card>
