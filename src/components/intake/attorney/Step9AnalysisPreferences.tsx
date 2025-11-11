@@ -48,10 +48,10 @@ export function Step9AnalysisPreferences({ onNext, onBack }: Step9AnalysisPrefer
     const current = form.getValues('reportFormats');
     if (current.includes(format)) {
       if (current.length > 1) {
-        form.setValue('reportFormats', current.filter(f => f !== format));
+        form.setValue('reportFormats', current.filter(f => f !== format), { shouldValidate: true });
       }
     } else {
-      form.setValue('reportFormats', [...current, format]);
+      form.setValue('reportFormats', [...current, format], { shouldValidate: true });
     }
   };
 
@@ -109,7 +109,10 @@ export function Step9AnalysisPreferences({ onNext, onBack }: Step9AnalysisPrefer
                         ? 'border-primary bg-primary/5'
                         : 'hover:border-muted-foreground/50'
                     }`}
-                    onClick={() => field.onChange('standard')}
+                    onClick={() => {
+                      field.onChange('standard');
+                      form.trigger('analysisDepth');
+                    }}
                   >
                     <div className="flex items-start gap-3">
                       <RadioGroupItem value="standard" id="standard" />
@@ -133,7 +136,10 @@ export function Step9AnalysisPreferences({ onNext, onBack }: Step9AnalysisPrefer
                         ? 'border-primary bg-primary/5'
                         : 'hover:border-muted-foreground/50'
                     }`}
-                    onClick={() => field.onChange('comprehensive')}
+                    onClick={() => {
+                      field.onChange('comprehensive');
+                      form.trigger('analysisDepth');
+                    }}
                   >
                     <div className="flex items-start gap-3">
                       <RadioGroupItem value="comprehensive" id="comprehensive" />
@@ -235,7 +241,10 @@ export function Step9AnalysisPreferences({ onNext, onBack }: Step9AnalysisPrefer
                         ? 'border-primary bg-primary/5'
                         : 'hover:border-muted-foreground/50'
                     }`}
-                    onClick={() => field.onChange('standard')}
+                    onClick={() => {
+                      field.onChange('standard');
+                      form.trigger('turnaroundTime');
+                    }}
                   >
                     <div className="flex items-start gap-3">
                       <RadioGroupItem value="standard" id="turnaround-standard" />
@@ -260,7 +269,10 @@ export function Step9AnalysisPreferences({ onNext, onBack }: Step9AnalysisPrefer
                         ? 'border-primary bg-primary/5'
                         : 'hover:border-muted-foreground/50'
                     }`}
-                    onClick={() => field.onChange('priority')}
+                    onClick={() => {
+                      field.onChange('priority');
+                      form.trigger('turnaroundTime');
+                    }}
                   >
                     <div className="flex items-start gap-3">
                       <RadioGroupItem value="priority" id="turnaround-priority" />
@@ -285,7 +297,10 @@ export function Step9AnalysisPreferences({ onNext, onBack }: Step9AnalysisPrefer
                         ? 'border-primary bg-primary/5'
                         : 'hover:border-muted-foreground/50'
                     }`}
-                    onClick={() => field.onChange('rush')}
+                    onClick={() => {
+                      field.onChange('rush');
+                      form.trigger('turnaroundTime');
+                    }}
                   >
                     <div className="flex items-start gap-3">
                       <RadioGroupItem value="rush" id="turnaround-rush" />
