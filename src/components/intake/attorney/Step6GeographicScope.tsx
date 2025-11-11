@@ -60,22 +60,30 @@ export function Step6GeographicScope({ onNext, onBack }: Step6GeographicScopePro
     },
   });
 
-  const targetMarkets = form.watch('targetMarkets');
+  const watchedTargetMarkets = form.watch('targetMarkets');
+  const targetMarkets = Array.isArray(watchedTargetMarkets) ? watchedTargetMarkets : [];
 
   const handleToggleMarket = (code: string) => {
-    const current = form.getValues('targetMarkets');
-    const priorityJurisdiction = form.getValues('priorityJurisdiction');
-    
-    if (current.includes(code)) {
-      const newMarkets = current.filter(c => c !== code);
-      form.setValue('targetMarkets', newMarkets, { shouldValidate: true });
-      
-      // Clear priority jurisdiction if it's no longer in selected markets
-      if (priorityJurisdiction === code) {
-        form.setValue('priorityJurisdiction', '', { shouldValidate: true });
+    try {
+      const currentRaw = form.getValues('targetMarkets');
+      const current = Array.isArray(currentRaw) ? currentRaw : [];
+      const priorityJurisdiction = form.getValues('priorityJurisdiction');
+
+      if (current.includes(code)) {
+        const newMarkets = current.filter((c) => c !== code);
+        form.setValue('targetMarkets', newMarkets, { shouldValidate: true });
+
+        if (priorityJurisdiction === code) {
+          form.setValue('priorityJurisdiction', '', { shouldValidate: true });
+          form.trigger('priorityJurisdiction');
+        }
+      } else {
+        form.setValue('targetMarkets', [...current, code], { shouldValidate: true });
       }
-    } else {
-      form.setValue('targetMarkets', [...current, code], { shouldValidate: true });
+
+      form.trigger('targetMarkets');
+    } catch (err) {
+      console.error('Step6GeographicScope: handleToggleMarket error', err, { code });
     }
   };
 
@@ -156,10 +164,14 @@ export function Step6GeographicScope({ onNext, onBack }: Step6GeographicScopePro
                           ? 'border-primary bg-primary/5'
                           : 'hover:border-muted-foreground/50'
                       }`}
-                      onClick={() => {
-                        field.onChange(market.code);
-                        form.trigger('priorityJurisdiction');
-                      }}
+                        onClick={() => {
+                          try {
+                            field.onChange(market.code);
+                            form.trigger('priorityJurisdiction');
+                          } catch (err) {
+                            console.error('Step6GeographicScope: set priority error', err, { code: market.code });
+                          }
+                        }}
                     >
                       <div className="flex items-center gap-2">
                         <div
