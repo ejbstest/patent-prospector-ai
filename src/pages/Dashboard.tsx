@@ -50,6 +50,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [analyses, setAnalyses] = useState<Analysis[]>([]);
   const [stats, setStats] = useState({
     total: 0,
@@ -64,32 +65,48 @@ export default function Dashboard() {
   }, [user]);
 
   const loadDashboardData = async () => {
-    setLoading(true);
-    
-    const { data, error } = await supabase
-      .from('analyses')
-      .select('id, invention_title, status, risk_score, risk_level, created_at, payment_status')
-      .eq('user_id', user?.id)
-      .order('created_at', { ascending: false })
-      .limit(5);
+    try {
+      setLoading(true);
+      setError(null);
+      
+      console.log('Loading dashboard data for user:', user?.id);
+      
+      const { data, error: queryError } = await supabase
+        .from('analyses')
+        .select('id, invention_title, status, risk_score, risk_level, created_at, payment_status')
+        .eq('user_id', user?.id)
+        .order('created_at', { ascending: false })
+        .limit(5);
 
-    if (data) {
-      setAnalyses(data);
+      if (queryError) {
+        console.error('Dashboard query error:', queryError);
+        setError(queryError.message);
+        return;
+      }
+
+      console.log('Dashboard data loaded:', data);
       
-      // Calculate stats
-      const total = data.length;
-      const active = data.filter(a => a.status !== 'complete' && a.status !== 'failed').length;
-      const completedScores = data
-        .filter(a => a.risk_score !== null)
-        .map(a => a.risk_score as number);
-      const avgRisk = completedScores.length > 0
-        ? Math.round(completedScores.reduce((sum, score) => sum + score, 0) / completedScores.length)
-        : 0;
-      
-      setStats({ total, active, avgRisk });
+      if (data) {
+        setAnalyses(data);
+        
+        // Calculate stats
+        const total = data.length;
+        const active = data.filter(a => a.status !== 'complete' && a.status !== 'failed').length;
+        const completedScores = data
+          .filter(a => a.risk_score !== null)
+          .map(a => a.risk_score as number);
+        const avgRisk = completedScores.length > 0
+          ? Math.round(completedScores.reduce((sum, score) => sum + score, 0) / completedScores.length)
+          : 0;
+        
+        setStats({ total, active, avgRisk });
+      }
+    } catch (err) {
+      console.error('Dashboard load error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load dashboard data');
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   };
 
   const handleCopyReferralLink = () => {
@@ -150,6 +167,19 @@ export default function Dashboard() {
   ];
 
   const [currentTip] = useState(tips[Math.floor(Math.random() * tips.length)]);
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+        <AlertCircle className="h-12 w-12 text-destructive" />
+        <h2 className="text-2xl font-semibold">Failed to Load Dashboard</h2>
+        <p className="text-muted-foreground text-center max-w-md">{error}</p>
+        <Button onClick={loadDashboardData}>
+          Try Again
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">

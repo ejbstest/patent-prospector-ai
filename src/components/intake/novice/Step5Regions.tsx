@@ -24,6 +24,7 @@ export function Step5Regions({ onNext, onBack }: Step5RegionsProps) {
 
   const form = useForm({
     resolver: zodResolver(noviceStep5Schema),
+    mode: 'onChange',
     defaultValues: {
       regions: formData.regions || [],
     },
@@ -36,7 +37,7 @@ export function Step5Regions({ onNext, onBack }: Step5RegionsProps) {
     const updated = current.includes(value)
       ? current.filter((r) => r !== value)
       : [...current, value];
-    form.setValue('regions', updated);
+    form.setValue('regions', updated, { shouldValidate: true });
   };
 
   const onSubmit = (data: { regions: string[] }) => {
