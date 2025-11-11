@@ -22,113 +22,174 @@ serve(async (req) => {
   }
 
   try {
-    // Extract and validate JWT
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      throw new Error('Missing authorization header');
-    }
-
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const supabaseClient = createClient(supabaseUrl, supabaseKey, {
-      global: { headers: { Authorization: authHeader } }
-    });
-
-    // Verify user is authenticated
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
-    if (authError || !user) {
-      throw new Error('Unauthorized');
-    }
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Parse and validate input
     const body = await req.json() as StartAnalysisInput;
     const { analysis_id } = body;
     
     if (!analysis_id || !validateUUID(analysis_id)) {
-      throw new Error('Invalid analysis_id: must be a valid UUID');
+      return new Response(
+        JSON.stringify({ error: 'Invalid analysis_id: must be a valid UUID' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
-    
-    // Use service role for backend operations
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Fetch analysis data and verify ownership
+    console.log(`Starting analysis workflow for analysis_id: ${analysis_id}`);
+
+    // Fetch the analysis
     const { data: analysis, error: fetchError } = await supabase
       .from('analyses')
       .select('*')
       .eq('id', analysis_id)
       .single();
 
-    if (fetchError) throw fetchError;
-    
-    // Verify user owns this analysis
-    if (analysis.user_id !== user.id) {
-      throw new Error('Forbidden: You do not own this analysis');
+    if (fetchError || !analysis) {
+      console.error('Error fetching analysis:', fetchError);
+      return new Response(
+        JSON.stringify({ error: 'Analysis not found' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    console.log(`Starting analysis workflow for: ${analysis.invention_title}`);
+    // Check if analysis is in correct state to start
+    if (analysis.status !== 'submitted') {
+      console.log(`Analysis ${analysis_id} is not in submitted state (current: ${analysis.status})`);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Analysis must be in submitted state to start',
+          current_status: analysis.status 
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
-    // Log workflow start
-    await supabase.from('agent_logs').insert({
-      analysis_id,
-      agent_name: 'research',
-      status: 'success',
-      agent_input: { invention_description: analysis.invention_description },
-      agent_output: { message: 'Workflow initiated' },
-      execution_time_ms: 0
-    });
+    // Check payment status
+    if (analysis.payment_status !== 'paid') {
+      console.log(`Analysis ${analysis_id} payment not confirmed (status: ${analysis.payment_status})`);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Payment must be confirmed before starting analysis',
+          payment_status: analysis.payment_status 
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
-    // Update status
-    await supabase
+    // Update status to queued
+    const { error: updateError } = await supabase
       .from('analyses')
       .update({ 
-        status: 'searching',
-        progress_percentage: 5 
+        status: 'queued',
+        progress_percentage: 0,
+        updated_at: new Date().toISOString()
       })
       .eq('id', analysis_id);
 
-    // Call research agent (non-blocking)
-    const startTime = Date.now();
-    const researchResponse = await supabase.functions.invoke('research-agent', {
-      body: {
-        analysis_id,
-        invention_description: analysis.invention_description,
-        technical_keywords: analysis.technical_keywords,
-        cpc_classifications: analysis.cpc_classifications,
-        jurisdictions: analysis.jurisdictions
-      }
-    });
-
-    if (researchResponse.error) {
-      console.error('Research agent error:', researchResponse.error);
-      
-      await supabase.from('agent_logs').insert({
-        analysis_id,
-        agent_name: 'research',
-        status: 'failed',
-        error_message: researchResponse.error.message,
-        execution_time_ms: Date.now() - startTime
-      });
-
-      await supabase
-        .from('analyses')
-        .update({ status: 'failed' })
-        .eq('id', analysis_id);
-
-      throw researchResponse.error;
+    if (updateError) {
+      console.error('Error updating analysis status:', updateError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to update analysis status' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
+    // Log the start of the analysis
+    await supabase
+      .from('agent_logs')
+      .insert({
+        analysis_id,
+        agent_name: 'workflow_orchestrator',
+        status: 'success',
+        agent_input: { 
+          action: 'start_analysis',
+          invention_title: analysis.invention_title 
+        },
+        agent_output: { message: 'Analysis workflow initiated' },
+        execution_time_ms: 0
+      });
+
+    console.log(`Analysis ${analysis_id} moved to queued status`);
+
+    // Trigger the research-agent in the background (fire and forget)
+    // This starts the automated workflow
+    (async () => {
+      try {
+        // Small delay to ensure the response is sent
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Update to searching status
+        await supabase
+          .from('analyses')
+          .update({ 
+            status: 'searching',
+            progress_percentage: 10,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', analysis_id);
+
+        console.log(`Updated analysis ${analysis_id} to searching status`);
+
+        // Invoke research agent
+        const { error } = await supabase.functions.invoke('research-agent', {
+          body: { 
+            analysis_id,
+            invention_description: analysis.invention_description,
+            technical_keywords: analysis.technical_keywords,
+            cpc_classifications: analysis.cpc_classifications,
+            jurisdictions: analysis.jurisdictions
+          }
+        });
+
+        if (error) {
+          console.error('Error invoking research-agent:', error);
+          
+          // Update analysis to failed state
+          await supabase
+            .from('analyses')
+            .update({ 
+              status: 'failed',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', analysis_id);
+
+          // Log the failure
+          await supabase
+            .from('agent_logs')
+            .insert({
+              analysis_id,
+              agent_name: 'workflow_orchestrator',
+              status: 'error',
+              error_message: error.message || 'Failed to start research agent',
+              agent_input: { action: 'trigger_research' },
+              execution_time_ms: 0
+            });
+        } else {
+          console.log(`Successfully triggered research-agent for analysis ${analysis_id}`);
+        }
+      } catch (err) {
+        console.error('Error in background research task:', err);
+      }
+    })();
+
+    // Return immediate response
     return new Response(
       JSON.stringify({ 
-        success: true, 
-        message: 'Analysis workflow started',
-        analysis_id 
+        success: true,
+        analysis_id,
+        status: 'queued',
+        message: 'Analysis workflow started successfully'
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { 
+        status: 200, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
     );
 
   } catch (error) {
-    console.error('Error in start-analysis:', error);
+    console.error('Error in start-analysis function:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return new Response(
       JSON.stringify({ error: errorMessage }),
@@ -139,3 +200,4 @@ serve(async (req) => {
     );
   }
 });
+
