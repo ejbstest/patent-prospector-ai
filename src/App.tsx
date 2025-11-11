@@ -12,6 +12,7 @@ import Dashboard from "./pages/Dashboard";
 import NewAnalysis from "./pages/NewAnalysis";
 import Analyses from "./pages/Analyses";
 import AnalysisDetail from "./pages/AnalysisDetail";
+import ReportViewer from "./pages/ReportViewer";
 import Settings from "./pages/Settings";
 import Billing from "./pages/Billing";
 import NotFound from "./pages/NotFound";
@@ -55,6 +56,11 @@ const App = () => (
                 <DashboardLayout>
                   <AnalysisDetail />
                 </DashboardLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard/analysis/:id/report" element={
+              <ProtectedRoute>
+                <ReportViewer />
               </ProtectedRoute>
             } />
             <Route path="/dashboard/settings" element={
