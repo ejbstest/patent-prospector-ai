@@ -9,22 +9,37 @@ interface CreateAnalysisParams {
 export async function createAnalysis({ userId, formData }: CreateAnalysisParams) {
   try {
     // Map attorney intake form data to analyses table fields
-    // Note: The form components currently use temporary mappings to the old FormData structure
-    // We extract the data from those temporary fields
+    const inventionTitle = formData.inventionTitle || 'Untitled Invention';
     
-    const inventionTitle = formData.disclosure || 'Untitled Invention'; // From Step2
-    const inventionDescription = formData.technicalDescription || ''; // From Step3
-    const jurisdictions = formData.regions || []; // From Step6
-    const cpcClassifications = formData.cpcCodes || []; // From Step5
+    // Build comprehensive invention description from multiple fields
+    const descriptionParts = [
+      formData.valueProp ? `Value Proposition: ${formData.valueProp}` : '',
+      formData.problemBeingSolved ? `Problem: ${formData.problemBeingSolved}` : '',
+      formData.solutionApproach ? `Solution: ${formData.solutionApproach}` : '',
+      formData.technicalDescription || '',
+      formData.targetCustomers ? `Target Customers: ${formData.targetCustomers}` : '',
+    ].filter(Boolean);
     
-    // Extract keywords from innovations for technical_keywords
-    const technicalKeywords = formData.innovations || [];
+    const inventionDescription = descriptionParts.join('\n\n');
     
-    // Determine analysis type (standard vs comprehensive) from Step9
-    // For now, default to 'standard' until we fully integrate Step9 data
-    const analysisType: 'standard' | 'premium' | 'whitespace' = 'standard';
+    // Map geographic data
+    const jurisdictions = formData.targetMarkets || [];
     
-    // All new analyses start as paid (attorney flow requires payment upfront)
+    // Map classification data
+    const cpcClassifications = formData.selectedClassifications || [];
+    
+    // Extract keywords from innovations and other sources
+    const technicalKeywords = [
+      ...(formData.keyInnovations || []),
+      formData.inventionCategory || '',
+      formData.primaryDomain || '',
+    ].filter(Boolean);
+    
+    // Determine analysis type from preferences
+    const analysisType: 'standard' | 'premium' | 'whitespace' = 
+      formData.analysisDepth === 'comprehensive' ? 'premium' : 'standard';
+    
+    // All new analyses start as pending payment
     const paymentStatus: 'unpaid' | 'pending' | 'paid' = 'pending';
     const amountPaid = null; // Will be updated after Stripe payment
 
