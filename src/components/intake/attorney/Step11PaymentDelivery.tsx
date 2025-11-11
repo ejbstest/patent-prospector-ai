@@ -61,9 +61,10 @@ export function Step11PaymentDelivery({ onNext, onExemption, onBack }: Step11Pay
   };
 
   // Calculate price based on preferences (mock data)
-  const basePrice = 997;
-  const turnaroundUpcharge = 0; // Would be calculated from Step 9
-  const totalPrice = basePrice + turnaroundUpcharge;
+const basePrice = 997;
+const turnaroundUpcharge = 0; // Would be calculated from Step 9
+const comprehensiveUpcharge = formData.analysisDepth === 'comprehensive' ? 297 : 0;
+const totalPrice = basePrice + turnaroundUpcharge + comprehensiveUpcharge;
 
   return (
     <Form {...form}>
@@ -107,6 +108,12 @@ export function Step11PaymentDelivery({ onNext, onExemption, onBack }: Step11Pay
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Turnaround Upgrade:</span>
                 <span>+${turnaroundUpcharge.toLocaleString()}</span>
+              </div>
+            )}
+            {comprehensiveUpcharge > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Comprehensive Upgrade:</span>
+                <span>+${comprehensiveUpcharge.toLocaleString()}</span>
               </div>
             )}
             

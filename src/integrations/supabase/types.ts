@@ -624,6 +624,12 @@ export type Database = {
         | "complete"
         | "failed"
         | "preview_ready"
+        | "submitted"
+        | "queued"
+        | "generating_claims"
+        | "identifying_whitespace"
+        | "writing_report"
+        | "formatting"
       analysis_type: "standard" | "premium_whitespace"
       app_role: "admin" | "expert" | "user"
       payment_status: "unpaid" | "paid" | "free_trial" | "exemption"
@@ -771,6 +777,12 @@ export const Constants = {
         "complete",
         "failed",
         "preview_ready",
+        "submitted",
+        "queued",
+        "generating_claims",
+        "identifying_whitespace",
+        "writing_report",
+        "formatting",
       ],
       analysis_type: ["standard", "premium_whitespace"],
       app_role: ["admin", "expert", "user"],
