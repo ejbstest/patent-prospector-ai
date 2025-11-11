@@ -1,8 +1,8 @@
-import { useEffect } from 'react';
-import { CheckCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { CheckCircle, Clock, ArrowRight, Sparkles } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 
 interface StepConfirmationProps {
   analysisId: string;
@@ -10,103 +10,112 @@ interface StepConfirmationProps {
 
 export function StepConfirmation({ analysisId }: StepConfirmationProps) {
   const navigate = useNavigate();
+  const [countdown, setCountdown] = useState(5);
 
   useEffect(() => {
-    // Simple confetti animation
-    const duration = 3 * 1000;
-    const animationEnd = Date.now() + duration;
-
-    const randomInRange = (min: number, max: number) => {
-      return Math.random() * (max - min) + min;
-    };
-
-    const interval = setInterval(() => {
-      const timeLeft = animationEnd - Date.now();
-
-      if (timeLeft <= 0) {
-        clearInterval(interval);
-        return;
-      }
-
-      // Simple confetti effect (could be enhanced with a library)
-      const particleCount = 2;
-      for (let i = 0; i < particleCount; i++) {
-        const particle = document.createElement('div');
-        particle.style.position = 'fixed';
-        particle.style.left = randomInRange(0, window.innerWidth) + 'px';
-        particle.style.top = '-10px';
-        particle.style.width = '10px';
-        particle.style.height = '10px';
-        particle.style.borderRadius = '50%';
-        particle.style.backgroundColor = `hsl(${randomInRange(0, 360)}, 70%, 60%)`;
-        particle.style.pointerEvents = 'none';
-        particle.style.zIndex = '9999';
-        document.body.appendChild(particle);
-
-        const animation = particle.animate(
-          [
-            { transform: 'translateY(0) rotate(0deg)', opacity: 1 },
-            { transform: `translateY(${window.innerHeight}px) rotate(720deg)`, opacity: 0 },
-          ],
-          {
-            duration: randomInRange(2000, 4000),
-            easing: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-          }
-        );
-
-        animation.onfinish = () => particle.remove();
-      }
-    }, 100);
-
-    return () => clearInterval(interval);
-  }, []);
+    if (countdown > 0) {
+      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+      return () => clearTimeout(timer);
+    } else {
+      navigate(`/dashboard/analysis/${analysisId}`);
+    }
+  }, [countdown, analysisId, navigate]);
 
   return (
-    <div className="max-w-2xl mx-auto text-center space-y-8">
-      <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-success/10 mb-4">
-        <CheckCircle className="w-12 h-12 text-success" />
-      </div>
-
-      <div>
-        <h2 className="text-3xl font-bold mb-2">Analysis Request Submitted!</h2>
-        <p className="text-muted-foreground text-lg">
-          We've received your IP risk analysis request
-        </p>
-      </div>
-
-      <Card className="border-primary/20">
-        <CardContent className="p-6 space-y-4">
-          <div>
-            <div className="text-sm text-muted-foreground mb-1">Analysis ID</div>
-            <div className="font-mono text-lg font-medium">{analysisId}</div>
-          </div>
-          <div className="pt-4 border-t border-border">
-            <div className="text-sm text-muted-foreground mb-1">Expected Completion</div>
-            <div className="text-lg font-medium">Within 48 hours</div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="space-y-3">
-        <p className="text-sm text-muted-foreground">
-          You'll receive an email confirmation shortly. We'll notify you when your analysis is ready.
-        </p>
-        <div className="flex gap-3 justify-center">
-          <Button
-            onClick={() => navigate(`/dashboard/analyses/${analysisId}`)}
-            size="lg"
-          >
-            View Progress
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => navigate('/dashboard')}
-            size="lg"
-          >
-            Back to Dashboard
-          </Button>
+    <div className="flex flex-col items-center justify-center min-h-[70vh] space-y-8 text-center">
+      {/* Success Animation */}
+      <div className="relative">
+        <div className="absolute inset-0 bg-primary/20 rounded-full blur-3xl animate-pulse" />
+        <div className="relative bg-gradient-to-br from-primary to-primary/60 rounded-full p-8">
+          <CheckCircle className="h-20 w-20 text-primary-foreground animate-in zoom-in duration-500" />
         </div>
       </div>
+
+      {/* Success Message */}
+      <div className="space-y-3 max-w-2xl">
+        <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+          Analysis Submitted Successfully!
+        </h1>
+        <p className="text-lg text-muted-foreground">
+          Your IP risk analysis is now being processed by our AI system
+        </p>
+      </div>
+
+      {/* Analysis Details Card */}
+      <Card className="w-full max-w-md p-6 space-y-4 border-primary/20">
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-muted-foreground">Analysis ID</span>
+          <code className="text-sm font-mono bg-muted px-2 py-1 rounded">
+            {analysisId.slice(0, 8)}...
+          </code>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-muted-foreground">Status</span>
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-primary animate-pulse" />
+            <span className="text-sm font-medium">Generating Preview</span>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-muted-foreground">Estimated Time</span>
+          <div className="flex items-center gap-2">
+            <Clock className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm">~5 minutes</span>
+          </div>
+        </div>
+      </Card>
+
+      {/* What Happens Next */}
+      <div className="text-left max-w-xl space-y-3 bg-muted/50 p-6 rounded-lg">
+        <h3 className="font-semibold text-lg flex items-center gap-2">
+          <Sparkles className="h-5 w-5 text-primary" />
+          What happens next?
+        </h3>
+        <ul className="space-y-2 text-sm text-muted-foreground">
+          <li className="flex items-start gap-2">
+            <span className="text-primary">1.</span>
+            <span>Our AI searches patent databases for relevant prior art</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-primary">2.</span>
+            <span>We generate a <strong className="text-foreground">FREE preliminary risk assessment</strong></span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-primary">3.</span>
+            <span>You will see top potential conflicts and overall risk score</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-primary">4.</span>
+            <span>Upgrade anytime for expert review & detailed claim analysis</span>
+          </li>
+        </ul>
+      </div>
+
+      {/* CTA */}
+      <div className="flex gap-4">
+        <Button 
+          size="lg"
+          onClick={() => navigate(`/dashboard/analysis/${analysisId}`)}
+          className="group"
+        >
+          View Progress
+          <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+        </Button>
+        <Button 
+          size="lg"
+          variant="outline"
+          onClick={() => navigate('/dashboard')}
+        >
+          Back to Dashboard
+        </Button>
+      </div>
+
+      {/* Auto-redirect countdown */}
+      <p className="text-xs text-muted-foreground">
+        Redirecting to progress page in {countdown} seconds...
+      </p>
     </div>
   );
 }

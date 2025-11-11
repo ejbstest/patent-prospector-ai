@@ -278,6 +278,56 @@ export type Database = {
           },
         ]
       }
+      preview_reports: {
+        Row: {
+          analysis_id: string
+          confidence_level: number | null
+          created_at: string
+          generated_at: string
+          id: string
+          key_findings: string[] | null
+          landscape_summary: Json | null
+          patents_found_count: number | null
+          preliminary_risk_score: number | null
+          risk_level: string | null
+          top_conflicts: Json | null
+        }
+        Insert: {
+          analysis_id: string
+          confidence_level?: number | null
+          created_at?: string
+          generated_at?: string
+          id?: string
+          key_findings?: string[] | null
+          landscape_summary?: Json | null
+          patents_found_count?: number | null
+          preliminary_risk_score?: number | null
+          risk_level?: string | null
+          top_conflicts?: Json | null
+        }
+        Update: {
+          analysis_id?: string
+          confidence_level?: number | null
+          created_at?: string
+          generated_at?: string
+          id?: string
+          key_findings?: string[] | null
+          landscape_summary?: Json | null
+          patents_found_count?: number | null
+          preliminary_risk_score?: number | null
+          risk_level?: string | null
+          top_conflicts?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "preview_reports_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: false
+            referencedRelation: "analyses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           company_name: string | null

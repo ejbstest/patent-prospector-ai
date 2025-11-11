@@ -131,9 +131,9 @@ export const useIntakeFormStore = create<IntakeFormState>()(
       getTotalSteps: () => {
         const { userType } = get().formData;
         if (!userType) return 8; // Max possible
-        if (userType === 'novice') return 7; // 1 + 5 steps + pricing
-        if (userType === 'intermediate') return 8; // 1 + 6 steps + pricing
-        return 10; // expert: 1 + 8 steps + pricing
+        if (userType === 'novice') return 6; // 1 + 5 steps (no pricing)
+        if (userType === 'intermediate') return 7; // 1 + 6 steps (no pricing)
+        return 9; // expert: 1 + 8 steps (no pricing)
       },
     }),
     {

@@ -14,3 +14,6 @@ verify_jwt = true
 
 [functions.deliver-report]
 verify_jwt = true
+
+[functions.generate-preview]
+verify_jwt = false

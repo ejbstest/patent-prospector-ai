@@ -3,7 +3,6 @@ import { useAuth } from '@/lib/auth';
 import { useIntakeFormStore } from '@/stores/intakeFormStore';
 import { FormProgress } from '@/components/intake/FormProgress';
 import { Step1UserType } from '@/components/intake/Step1UserType';
-import { StepPricing } from '@/components/intake/StepPricing';
 import { StepConfirmation } from '@/components/intake/StepConfirmation';
 import { debounce } from '@/lib/utils/formHelpers';
 import { createAnalysis } from '@/lib/api/createAnalysis';
@@ -112,8 +111,7 @@ export default function NewAnalysis() {
       if (currentStep === 3) return <Step3Uniqueness onNext={handleNext} onBack={handleBack} />;
       if (currentStep === 4) return <Step4Competitors onNext={handleNext} onBack={handleBack} />;
       if (currentStep === 5) return <Step5Regions onNext={handleNext} onBack={handleBack} />;
-      if (currentStep === 6) return <NoviceStep6Files onNext={handleNext} onBack={handleBack} />;
-      if (currentStep === 7) return <StepPricing onNext={handleSubmit} onBack={handleBack} />;
+      if (currentStep === 6) return <NoviceStep6Files onNext={handleSubmit} onBack={handleBack} />;
     }
 
     // Intermediate flow
@@ -123,8 +121,7 @@ export default function NewAnalysis() {
       if (currentStep === 4) return <Step4CPC onNext={handleNext} onBack={handleBack} />;
       if (currentStep === 5) return <Step5PriorArt onNext={handleNext} onBack={handleBack} />;
       if (currentStep === 6) return <Step6Jurisdictions onNext={handleNext} onBack={handleBack} />;
-      if (currentStep === 7) return <IntermediateStep7Files onNext={handleNext} onBack={handleBack} />;
-      if (currentStep === 8) return <StepPricing onNext={handleSubmit} onBack={handleBack} />;
+      if (currentStep === 7) return <IntermediateStep7Files onNext={handleSubmit} onBack={handleBack} />;
     }
 
     // Expert flow
@@ -135,8 +132,7 @@ export default function NewAnalysis() {
       if (currentStep === 5) return <Step5Assignees onNext={handleNext} onBack={handleBack} />;
       if (currentStep === 6) return <ExpertStep6PriorArt onNext={handleNext} onBack={handleBack} />;
       if (currentStep === 7) return <Step7Parameters onNext={handleNext} onBack={handleBack} />;
-      if (currentStep === 8) return <ExpertStep8Files onNext={handleNext} onBack={handleBack} />;
-      if (currentStep === 9) return <StepPricing onNext={handleSubmit} onBack={handleBack} />;
+      if (currentStep === 8) return <ExpertStep8Files onNext={handleSubmit} onBack={handleBack} />;
     }
 
     return null;
