@@ -146,7 +146,7 @@ BE CREATIVE. Think like a patent examiner trying to find reasons to reject this 
     // Fallback to OpenAI if Perplexity failed or not available
     if (!searchQueries) {
       const response = await retryWithBackoff(async () => {
-        return await fetch('https://api.openai.com/v1/chat/completions', {
+        const res = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${openaiKey}`,
@@ -165,9 +165,18 @@ BE CREATIVE. Think like a patent examiner trying to find reasons to reject this 
             response_format: { type: "json_object" }
           })
         });
+
+        if (!res.ok) {
+          const errorText = await res.text();
+          throw new Error(`OpenAI API error: ${res.status} - ${errorText}`);
+        }
+        return res;
       });
 
       const data = await response.json();
+      if (!data.choices || !data.choices[0] || !data.choices[0].message || !data.choices[0].message.content) {
+        throw new Error('Invalid response structure from OpenAI API');
+      }
       const parsed = JSON.parse(data.choices[0].message.content);
       searchQueries = parsed.queries || parsed;
     }
