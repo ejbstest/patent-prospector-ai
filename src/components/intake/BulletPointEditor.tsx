@@ -19,6 +19,7 @@ export function BulletPointEditor({
   minPoints = 0,
   className,
 }: BulletPointEditorProps) {
+  const safePoints = Array.isArray(points) ? points : [];
   const [inputValue, setInputValue] = useState('');
 
   const addPoint = () => {

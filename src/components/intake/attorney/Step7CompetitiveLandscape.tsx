@@ -28,10 +28,11 @@ export function Step7CompetitiveLandscape({ onNext, onBack }: Step7CompetitiveLa
 
   const form = useForm({
     resolver: zodResolver(competitiveLandscapeSchema),
+    mode: 'onChange',
     defaultValues: {
-      directCompetitors: formData.directCompetitors || [],
-      indirectCompetitors: formData.indirectCompetitors || [],
-      marketLeaders: formData.marketLeaders || [],
+      directCompetitors: Array.isArray(formData.directCompetitors) ? formData.directCompetitors : (formData.directCompetitors ? [String(formData.directCompetitors)] : []),
+      indirectCompetitors: Array.isArray(formData.indirectCompetitors) ? formData.indirectCompetitors : (formData.indirectCompetitors ? [String(formData.indirectCompetitors)] : []),
+      marketLeaders: Array.isArray(formData.marketLeaders) ? formData.marketLeaders : (formData.marketLeaders ? [String(formData.marketLeaders)] : []),
     },
   });
 
@@ -64,7 +65,7 @@ export function Step7CompetitiveLandscape({ onNext, onBack }: Step7CompetitiveLa
               <FormLabel>Direct Competitors *</FormLabel>
               <FormControl>
                 <BulletPointEditor
-                  points={field.value || []}
+                  points={Array.isArray(field.value) ? field.value : []}
                   onChange={field.onChange}
                   placeholder="Company or product name"
                   minPoints={3}
@@ -86,7 +87,7 @@ export function Step7CompetitiveLandscape({ onNext, onBack }: Step7CompetitiveLa
               <FormLabel>Indirect Competitors (Optional)</FormLabel>
               <FormControl>
                 <BulletPointEditor
-                  points={field.value || []}
+                  points={Array.isArray(field.value) ? field.value : []}
                   onChange={field.onChange}
                   placeholder="Company or product solving the same problem differently"
                   minPoints={0}
@@ -108,7 +109,7 @@ export function Step7CompetitiveLandscape({ onNext, onBack }: Step7CompetitiveLa
               <FormLabel>Market Leaders (Optional)</FormLabel>
               <FormControl>
                 <BulletPointEditor
-                  points={field.value || []}
+                  points={Array.isArray(field.value) ? field.value : []}
                   onChange={field.onChange}
                   placeholder="Dominant company in this industry"
                   minPoints={0}
