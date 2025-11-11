@@ -64,7 +64,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
                     <Icon className="h-5 w-5" />
                     <span>{item.name}</span>
                   </div>
-                  {item.badge && (
+                  {('badge' in item && typeof item.badge === 'number') && (
                     <Badge variant="secondary" className="ml-auto">
                       {item.badge}
                     </Badge>
