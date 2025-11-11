@@ -6,19 +6,53 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Input validation schema
+interface StartAnalysisInput {
+  analysis_id: string;
+}
+
+function validateUUID(uuid: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(uuid);
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { analysis_id } = await req.json();
-    
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    // Extract and validate JWT
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      throw new Error('Missing authorization header');
+    }
 
-    // Fetch analysis data
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabaseClient = createClient(supabaseUrl, supabaseKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    // Verify user is authenticated
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
+    if (authError || !user) {
+      throw new Error('Unauthorized');
+    }
+
+    // Parse and validate input
+    const body = await req.json() as StartAnalysisInput;
+    const { analysis_id } = body;
+    
+    if (!analysis_id || !validateUUID(analysis_id)) {
+      throw new Error('Invalid analysis_id: must be a valid UUID');
+    }
+    
+    // Use service role for backend operations
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Fetch analysis data and verify ownership
     const { data: analysis, error: fetchError } = await supabase
       .from('analyses')
       .select('*')
@@ -26,6 +60,11 @@ serve(async (req) => {
       .single();
 
     if (fetchError) throw fetchError;
+    
+    // Verify user owns this analysis
+    if (analysis.user_id !== user.id) {
+      throw new Error('Forbidden: You do not own this analysis');
+    }
 
     console.log(`Starting analysis workflow for: ${analysis.invention_title}`);
 

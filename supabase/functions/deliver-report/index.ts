@@ -6,6 +6,16 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+function validateUUID(uuid: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(uuid);
+}
+
+function validateEmail(email: string): boolean {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -14,7 +24,13 @@ serve(async (req) => {
   const startTime = Date.now();
 
   try {
-    const { analysis_id } = await req.json();
+    // Parse and validate input
+    const body = await req.json();
+    const { analysis_id } = body;
+    
+    if (!analysis_id || !validateUUID(analysis_id)) {
+      throw new Error('Invalid analysis_id: must be a valid UUID');
+    }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -50,6 +66,11 @@ serve(async (req) => {
 
     // Send email notification
     const resendKey = Deno.env.get('RESEND_API_KEY');
+    
+    // Validate email before sending
+    if (!validateEmail(user.email)) {
+      throw new Error(`Invalid email address: ${user.email}`);
+    }
     
     if (resendKey) {
 

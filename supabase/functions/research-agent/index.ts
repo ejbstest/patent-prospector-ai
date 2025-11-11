@@ -7,6 +7,11 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+function validateUUID(uuid: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(uuid);
+}
+
 async function retryWithBackoff<T>(
   fn: () => Promise<T>,
   maxRetries = 3,
@@ -36,12 +41,24 @@ serve(async (req) => {
   const startTime = Date.now();
 
   try {
+    // Parse and validate input
+    const body = await req.json();
     const { 
       analysis_id, 
       invention_description, 
       technical_keywords,
       cpc_classifications 
-    } = await req.json();
+    } = body;
+    
+    if (!analysis_id || !validateUUID(analysis_id)) {
+      throw new Error('Invalid analysis_id: must be a valid UUID');
+    }
+    if (!invention_description || typeof invention_description !== 'string') {
+      throw new Error('Invalid invention_description: must be a non-empty string');
+    }
+    if (invention_description.length > 10000) {
+      throw new Error('invention_description too long: max 10,000 characters');
+    }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
