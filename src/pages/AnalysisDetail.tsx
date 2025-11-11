@@ -20,8 +20,6 @@ import { ActivityFeed } from '@/components/analysis/ActivityFeed';
 import { RiskMeter } from '@/components/analysis/RiskMeter';
 import { ConflictingPatentsTable } from '@/components/analysis/ConflictingPatentsTable';
 import { ClaimChartViewer } from '@/components/analysis/ClaimChartViewer';
-import { FreePreviewReport } from '@/components/analysis/FreePreviewReport';
-import { UpgradeDialog } from '@/components/analysis/UpgradeDialog';
 import { format } from 'date-fns';
 
 export default function AnalysisDetail() {
@@ -31,10 +29,8 @@ export default function AnalysisDetail() {
   const { toast } = useToast();
   const [analysis, setAnalysis] = useState<any>(null);
   const [patents, setPatents] = useState<any[]>([]);
-  const [previewReport, setPreviewReport] = useState<any>(null);
   const [selectedPatent, setSelectedPatent] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
 
   useEffect(() => {
     if (!id || !user) return;
@@ -67,19 +63,8 @@ export default function AnalysisDetail() {
       if (data) setPatents(data);
     };
 
-    const fetchPreview = async () => {
-      const { data } = await supabase
-        .from('preview_reports')
-        .select('*')
-        .eq('analysis_id', id)
-        .single();
-
-      if (data) setPreviewReport(data);
-    };
-
     fetchAnalysis();
     fetchPatents();
-    fetchPreview();
 
     // Subscribe to realtime updates
     const channel = supabase
@@ -110,74 +95,57 @@ export default function AnalysisDetail() {
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { variant: any; label: string }> = {
+      submitted: { variant: 'secondary', label: 'Submitted' },
+      queued: { variant: 'secondary', label: 'Queued' },
       searching: { variant: 'default', label: 'Searching' },
       analyzing: { variant: 'secondary', label: 'Analyzing' },
-      reviewing: { variant: 'default', label: 'Expert Review' },
+      generating_claims: { variant: 'default', label: 'Generating Claims' },
+      identifying_whitespace: { variant: 'default', label: 'Identifying White Space' },
+      writing_report: { variant: 'default', label: 'Writing Report' },
+      formatting: { variant: 'default', label: 'Formatting' },
       complete: { variant: 'default', label: 'Complete' },
+      failed: { variant: 'destructive', label: 'Failed' },
     };
     const config = variants[status] || { variant: 'default', label: status };
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
   const getTimelineSteps = (): Array<{ label: string; status: 'complete' | 'in-progress' | 'pending'; count?: number }> => {
-    const progress = analysis.progress_percentage || 0;
+    const statusOrder = ['submitted', 'queued', 'searching', 'analyzing', 'generating_claims', 'identifying_whitespace', 'writing_report', 'formatting', 'complete'];
+    const currentIndex = statusOrder.indexOf(analysis.status);
+    
     return [
-      { label: 'Patent search initiated', status: (progress >= 10 ? 'complete' : 'pending') as 'complete' | 'in-progress' | 'pending' },
+      { 
+        label: 'Patent search initiated', 
+        status: currentIndex >= 2 ? 'complete' : currentIndex === 2 ? 'in-progress' : 'pending'
+      },
       { 
         label: `Analyzing ${patents.length} relevant patents`, 
-        status: (progress >= 10 && progress < 60 ? 'in-progress' : progress >= 60 ? 'complete' : 'pending') as 'complete' | 'in-progress' | 'pending',
-        count: progress >= 10 && progress < 60 ? patents.length : undefined
+        status: currentIndex > 3 ? 'complete' : currentIndex === 3 ? 'in-progress' : 'pending',
+        count: currentIndex >= 3 ? patents.length : undefined
       },
-      { label: 'Conflict assessment', status: (progress >= 60 && progress < 80 ? 'in-progress' : progress >= 80 ? 'complete' : 'pending') as 'complete' | 'in-progress' | 'pending' },
-      { label: 'Report generation', status: (progress >= 80 && progress < 95 ? 'in-progress' : progress >= 95 ? 'complete' : 'pending') as 'complete' | 'in-progress' | 'pending' },
-      { label: 'Expert review', status: (progress >= 95 ? 'in-progress' : 'pending') as 'complete' | 'in-progress' | 'pending' },
+      { 
+        label: 'Generating claim charts', 
+        status: currentIndex > 4 ? 'complete' : currentIndex === 4 ? 'in-progress' : 'pending'
+      },
+      { 
+        label: 'Identifying white space opportunities', 
+        status: currentIndex > 5 ? 'complete' : currentIndex === 5 ? 'in-progress' : 'pending'
+      },
+      { 
+        label: 'Writing comprehensive report', 
+        status: currentIndex > 6 ? 'complete' : currentIndex === 6 ? 'in-progress' : 'pending'
+      },
+      { 
+        label: 'Final formatting & delivery', 
+        status: currentIndex >= 8 ? 'complete' : currentIndex === 7 ? 'in-progress' : 'pending'
+      },
     ];
   };
 
-  const isInProgress = ['searching', 'analyzing'].includes(analysis.status);
-  const isPreviewReady = analysis.status === 'preview_ready' && analysis.payment_status === 'unpaid';
+  const isInProgress = !['complete', 'failed'].includes(analysis.status);
   const isComplete = analysis.status === 'complete';
   const isPaid = analysis.payment_status === 'paid';
-
-  // Show free preview report if status is preview_ready and unpaid
-  if (isPreviewReady && previewReport) {
-    return (
-      <div className="space-y-6 pb-8">
-        {/* Header */}
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')}>
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <div>
-              <h1 className="text-3xl font-bold">{analysis.invention_title}</h1>
-              <div className="flex items-center gap-3 mt-2">
-                <Badge variant="secondary">Free Preview</Badge>
-                <span className="text-sm text-muted-foreground">
-                  Created {format(new Date(analysis.created_at), 'MMM d, yyyy')}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Preview Report */}
-        <FreePreviewReport 
-          preview={previewReport}
-          analysisId={analysis.id}
-          onUpgrade={() => setShowUpgradeDialog(true)}
-        />
-
-        {/* Upgrade Dialog */}
-        <UpgradeDialog
-          open={showUpgradeDialog}
-          onOpenChange={setShowUpgradeDialog}
-          analysisId={analysis.id}
-          patentsFoundCount={previewReport.patents_found_count}
-        />
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6 pb-8">
@@ -244,76 +212,8 @@ export default function AnalysisDetail() {
         </Card>
       )}
 
-      {/* Free Snapshot (unpaid completed analyses) */}
-      {isComplete && !isPaid && (
-        <Card className="border-secondary">
-          <CardHeader>
-            <CardTitle>Free IP Risk Snapshot</CardTitle>
-            <CardDescription>Upgrade to see the full analysis</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex items-center justify-center">
-              <RiskMeter score={analysis.risk_score || 0} />
-            </div>
-
-            <div>
-              <h3 className="font-semibold mb-3">Top 3 Potential Conflicts</h3>
-              <div className="space-y-2">
-                {patents.slice(0, 3).map((patent) => (
-                  <div key={patent.id} className="p-4 border rounded-lg">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <p className="font-mono text-sm font-medium">{patent.patent_number}</p>
-                        <p className="text-sm mt-1">{patent.patent_title}</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {patent.assignee || 'Unknown assignee'}
-                        </p>
-                      </div>
-                      <Badge variant="destructive">Severity: {patent.conflict_severity}/10</Badge>
-                    </div>
-                    <div className="mt-3 relative">
-                      <p className="text-sm text-muted-foreground blur-sm select-none">
-                        This patent describes a similar method for...
-                      </p>
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <Button size="sm" variant="secondary">
-                          Unlock Details
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <Card className="border-primary bg-primary/5">
-              <CardHeader>
-                <CardTitle>Unlock Full Report</CardTitle>
-                <CardDescription>Get complete access to all conflicts, claim charts, and strategies</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="text-3xl font-bold">$2,500</div>
-                <ul className="space-y-2 text-sm">
-                  <li>✓ See all {patents.length} potential conflicts</li>
-                  <li>✓ Detailed claim chart analysis</li>
-                  <li>✓ Design-around strategies</li>
-                  <li>✓ Competitive landscape mapping</li>
-                  <li>✓ Expert review and recommendations</li>
-                </ul>
-                <Button className="w-full" size="lg">
-                  Upgrade Now
-                </Button>
-                <p className="text-xs text-center text-muted-foreground">
-                  Special offer expires in 47:23:15
-                </p>
-              </CardContent>
-            </Card>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Full Risk Dashboard (paid completed analyses) */}
-      {isComplete && isPaid && (
+      {isComplete && (
         <div className="space-y-6">
           <Card>
             <CardHeader>
