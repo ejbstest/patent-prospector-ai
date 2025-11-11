@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/lib/auth';
 import { useIntakeFormStore } from '@/stores/intakeFormStore';
 import { FormProgress } from '@/components/intake/FormProgress';
@@ -35,15 +35,18 @@ export default function NewAnalysis() {
   const [showDraftManager, setShowDraftManager] = useState(false);
   const [showSaveDraft, setShowSaveDraft] = useState(false);
 
-  // Auto-save every 30 seconds
+  // Auto-save every 30 seconds (stable debounced function)
+  const debouncedSaveRef = useRef<() => void>();
   useEffect(() => {
-    const autoSave = debounce(() => {
+    debouncedSaveRef.current = debounce(() => {
       markSaved();
       console.log('Form auto-saved to localStorage');
     }, 30000);
+  }, [markSaved]);
 
-    autoSave();
-  }, [formData, markSaved]);
+  useEffect(() => {
+    debouncedSaveRef.current?.();
+  }, [formData]);
 
   const handleNext = () => {
     markSaved(); // Auto-save when progressing to next step

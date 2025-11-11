@@ -24,17 +24,17 @@ export function BulletPointEditor({
 
   const addPoint = () => {
     if (inputValue.trim()) {
-      onChange([...points, inputValue.trim()]);
+      onChange([...safePoints, inputValue.trim()]);
       setInputValue('');
     }
   };
 
   const removePoint = (index: number) => {
-    onChange(points.filter((_, i) => i !== index));
+    onChange(safePoints.filter((_, i) => i !== index));
   };
 
   const updatePoint = (index: number, value: string) => {
-    const newPoints = [...points];
+    const newPoints = [...safePoints];
     newPoints[index] = value;
     onChange(newPoints);
   };
@@ -49,7 +49,7 @@ export function BulletPointEditor({
   return (
     <div className={cn('space-y-3', className)}>
       <div className="space-y-2">
-        {points.map((point, index) => (
+        {safePoints.map((point, index) => (
           <div key={index} className="flex items-start gap-2">
             <div className="flex-shrink-0 w-6 h-10 flex items-center justify-center">
               <div className="w-2 h-2 rounded-full bg-primary" />
@@ -66,7 +66,7 @@ export function BulletPointEditor({
               size="icon"
               onClick={() => removePoint(index)}
               className="flex-shrink-0"
-              disabled={points.length <= minPoints}
+              disabled={safePoints.length <= minPoints}
             >
               <X className="w-4 h-4" />
             </Button>
@@ -93,7 +93,7 @@ export function BulletPointEditor({
         </Button>
       </div>
 
-      {minPoints > 0 && points.length < minPoints && (
+      {minPoints > 0 && safePoints.length < minPoints && (
         <p className="text-sm text-muted-foreground">
           At least {minPoints} point{minPoints !== 1 ? 's' : ''} required
         </p>
