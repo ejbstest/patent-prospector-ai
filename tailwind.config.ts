@@ -14,8 +14,16 @@ export default {
     },
     extend: {
       fontFamily: {
+        heading: ['Cormorant Garamond', 'serif'],
+        body: ['Inter', 'sans-serif'],
         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
-        mono: ['JetBrains Mono', 'monospace'],
+        mono: ['IBM Plex Mono', 'JetBrains Mono', 'monospace'],
+      },
+      fontSize: {
+        'hero': '56px',
+        'page-title': '42px',
+        'section': '32px',
+        'card-title': '24px',
       },
       colors: {
         border: "hsl(var(--border))",
@@ -26,6 +34,8 @@ export default {
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
+          dark: "hsl(var(--primary-dark))",
+          light: "hsl(var(--primary-light))",
           glow: "hsl(var(--primary-glow))",
         },
         secondary: {
@@ -60,6 +70,17 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        gray: {
+          50: "hsl(var(--gray-50))",
+          100: "hsl(var(--gray-100))",
+          200: "hsl(var(--gray-200))",
+          300: "hsl(var(--gray-300))",
+          400: "hsl(var(--gray-400))",
+          500: "hsl(var(--gray-500))",
+          600: "hsl(var(--gray-600))",
+          700: "hsl(var(--gray-700))",
+          900: "hsl(var(--gray-900))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
@@ -72,9 +93,17 @@ export default {
         },
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
+        lg: "var(--radius-lg)",
+        md: "var(--radius)",
         sm: "calc(var(--radius) - 4px)",
+        full: "var(--radius-full)",
+      },
+      boxShadow: {
+        'subtle': '0 1px 3px rgba(0, 0, 0, 0.05)',
+        'card': '0 4px 12px rgba(0, 0, 0, 0.08)',
+        'hover': '0 8px 20px rgba(0, 0, 0, 0.12)',
+        'modal': '0 20px 60px rgba(0, 0, 0, 0.15)',
+        'purple': '0 4px 12px rgba(124, 58, 237, 0.25)',
       },
       keyframes: {
         "accordion-down": {
