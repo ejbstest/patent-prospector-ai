@@ -7,7 +7,10 @@ import { debounce } from '@/lib/utils/formHelpers';
 import { createAnalysis } from '@/lib/api/createAnalysis';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
-import { Check } from 'lucide-react';
+import { Check, Save, FolderOpen } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { DraftManager } from '@/components/intake/DraftManager';
+import { SaveDraftDialog } from '@/components/intake/SaveDraftDialog';
 
 // Attorney intake steps (11-step flow)
 import { Step1FirmInfo } from '@/components/intake/attorney/Step1FirmInfo';
@@ -25,9 +28,11 @@ import { Step11PaymentDelivery } from '@/components/intake/attorney/Step11Paymen
 export default function NewAnalysis() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { currentStep, formData, setStep, nextStep, prevStep, markSaved, reset, isDirty, lastSaved } = useIntakeFormStore();
+  const { currentStep, formData, setStep, nextStep, prevStep, markSaved, reset, isDirty, lastSaved, updateFormData } = useIntakeFormStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [analysisId, setAnalysisId] = useState<string | null>(null);
+  const [showDraftManager, setShowDraftManager] = useState(false);
+  const [showSaveDraft, setShowSaveDraft] = useState(false);
 
   // Auto-save every 30 seconds
   useEffect(() => {
@@ -49,6 +54,15 @@ export default function NewAnalysis() {
     markSaved(); // Auto-save when going back
     prevStep();
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleLoadDraft = (draft: any) => {
+    setStep(draft.current_step);
+    updateFormData(draft.form_data);
+    toast({
+      title: 'Draft loaded',
+      description: `Continuing from step ${draft.current_step}`,
+    });
   };
 
   const handleSubmit = async () => {
@@ -122,19 +136,37 @@ export default function NewAnalysis() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
-      <div className="flex items-start justify-between">
-        <div>
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1">
           <h1 className="text-3xl font-bold tracking-tight">New FTO Analysis</h1>
           <p className="text-muted-foreground mt-2">
             White-labeled Freedom to Operate report delivered in 24 hours
           </p>
         </div>
-        {!isDirty && lastSaved && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Check className="h-4 w-4 text-green-500" />
-            <span>Saved {format(lastSaved, 'p')}</span>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {!isDirty && lastSaved && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Check className="h-4 w-4 text-green-500" />
+              <span className="hidden sm:inline">Saved {format(lastSaved, 'p')}</span>
+            </div>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowDraftManager(true)}
+          >
+            <FolderOpen className="h-4 w-4 mr-2" />
+            Load Draft
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowSaveDraft(true)}
+          >
+            <Save className="h-4 w-4 mr-2" />
+            Save Draft
+          </Button>
+        </div>
       </div>
 
       <FormProgress currentStep={currentStep} totalSteps={totalSteps} />
@@ -142,6 +174,17 @@ export default function NewAnalysis() {
       <div className="bg-card border border-border rounded-lg p-8">
         {renderStep()}
       </div>
+
+      <DraftManager
+        open={showDraftManager}
+        onClose={() => setShowDraftManager(false)}
+        onLoadDraft={handleLoadDraft}
+      />
+
+      <SaveDraftDialog
+        open={showSaveDraft}
+        onClose={() => setShowSaveDraft(false)}
+      />
     </div>
   );
 }
