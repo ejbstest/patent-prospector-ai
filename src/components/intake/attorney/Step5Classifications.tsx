@@ -62,9 +62,9 @@ export function Step5Classifications({ onNext, onBack }: Step5ClassificationsPro
   const handleToggleClassification = (code: string) => {
     const current = form.getValues('selectedClassifications');
     if (current.includes(code)) {
-      form.setValue('selectedClassifications', current.filter(c => c !== code));
+      form.setValue('selectedClassifications', current.filter(c => c !== code), { shouldValidate: true });
     } else {
-      form.setValue('selectedClassifications', [...current, code]);
+      form.setValue('selectedClassifications', [...current, code], { shouldValidate: true });
     }
   };
 
@@ -155,7 +155,10 @@ export function Step5Classifications({ onNext, onBack }: Step5ClassificationsPro
                         ? 'border-primary bg-primary/5'
                         : 'hover:border-muted-foreground/50'
                     }`}
-                    onClick={() => field.onChange(domain)}
+                    onClick={() => {
+                      field.onChange(domain);
+                      form.trigger('primaryDomain');
+                    }}
                   >
                     <div className="flex items-center gap-2">
                       <div
