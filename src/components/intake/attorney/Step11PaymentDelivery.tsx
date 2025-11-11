@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { CreditCard, Mail, Plus, X } from 'lucide-react';
 import { useState } from 'react';
+import { ResearcherExemptionDialog } from '../ResearcherExemptionDialog';
 
 const paymentDeliverySchema = z.object({
   deliveryEmail: z.string().email('Valid email is required'),
@@ -19,13 +20,15 @@ const paymentDeliverySchema = z.object({
 
 interface Step11PaymentDeliveryProps {
   onNext: () => void;
+  onExemption: () => void;
   onBack: () => void;
 }
 
-export function Step11PaymentDelivery({ onNext, onBack }: Step11PaymentDeliveryProps) {
+export function Step11PaymentDelivery({ onNext, onExemption, onBack }: Step11PaymentDeliveryProps) {
   const { formData } = useIntakeFormStore();
   const [secondaryEmails, setSecondaryEmails] = useState<string[]>([]);
   const [emailInput, setEmailInput] = useState('');
+  const [showExemptionDialog, setShowExemptionDialog] = useState(false);
 
   const form = useForm({
     resolver: zodResolver(paymentDeliverySchema),
@@ -44,6 +47,11 @@ export function Step11PaymentDelivery({ onNext, onBack }: Step11PaymentDeliveryP
 
   const removeSecondaryEmail = (index: number) => {
     setSecondaryEmails(secondaryEmails.filter((_, i) => i !== index));
+  };
+
+  const handleExemptionValidated = () => {
+    // Proceed with exemption - skip payment
+    onExemption();
   };
 
   const onSubmit = (data: z.infer<typeof paymentDeliverySchema>) => {
@@ -238,11 +246,37 @@ export function Step11PaymentDelivery({ onNext, onBack }: Step11PaymentDeliveryP
           </ol>
         </div>
 
-        <StepNavigation
-          onBack={onBack}
-          onNext={form.handleSubmit(onSubmit)}
-          isLastStep={true}
-          canGoNext={form.formState.isValid}
+        <div className="flex items-center justify-between pt-6 border-t border-border">
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onBack}
+            >
+              Back
+            </Button>
+            
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setShowExemptionDialog(true)}
+            >
+              Researcher Exemption
+            </Button>
+          </div>
+          
+          <Button
+            type="submit"
+            disabled={!form.formState.isValid}
+          >
+            Process Payment & Submit
+          </Button>
+        </div>
+
+        <ResearcherExemptionDialog
+          open={showExemptionDialog}
+          onOpenChange={setShowExemptionDialog}
+          onCodeValidated={handleExemptionValidated}
         />
       </form>
     </Form>

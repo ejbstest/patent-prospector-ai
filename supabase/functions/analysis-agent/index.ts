@@ -44,14 +44,45 @@ serve(async (req) => {
 
     console.log(`Analysis agent processing ${patents.length} patents`);
 
+    // PROMPT 2: Patent Relevance Scoring & Ranking
+    const RELEVANCE_SCORING_PROMPT = `You are a patent examiner evaluating prior art relevance. Your task is to score how relevant each patent is to the target invention.
+
+TARGET INVENTION: ${invention_description}
+
+SCORING CRITERIA (1-10 scale for each, then weighted average):
+
+1. TECHNICAL OVERLAP (40% weight): How similar are the technical approaches?
+2. CLAIM COVERAGE (30% weight): How much of the target invention is covered by this patent's claims?
+3. LEGAL STATUS & ENFORCEABILITY (15% weight): Is this patent currently enforceable?
+4. ASSIGNEE RISK PROFILE (10% weight): Is the assignee litigious?
+5. CITATION STRENGTH (5% weight): How influential is this patent?
+
+OUTPUT FORMAT (JSON):
+{
+  "patent_number": "{patent_number}",
+  "overall_relevance_score": weighted average (1-10, two decimals),
+  "dimension_scores": {
+    "technical_overlap": {"score": number, "justification": "..."},
+    "claim_coverage": {"score": number, "justification": "..."},
+    "legal_status": {"score": number, "justification": "..."},
+    "assignee_risk": {"score": number, "justification": "..."},
+    "citation_strength": {"score": number, "justification": "..."}
+  },
+  "risk_level": "critical/high/medium/low",
+  "key_overlapping_features": ["feature 1", "feature 2"],
+  "recommended_action": "immediate design-around / FTO opinion / monitor / ignore"
+}
+
+Be conservative—overestimate risk rather than underestimate.`;
+
     const conflicts = [];
 
     // Process top patents for conflict detection
     for (const patent of patents.slice(0, 20)) {
       console.log(`Analyzing patent: ${patent.patent_number}`);
 
-      // Simulate claim extraction and conflict analysis
-      const analysisResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      // STEP 1: Score patent relevance
+      const scoringResponse = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${openaiKey}`,
@@ -61,30 +92,84 @@ serve(async (req) => {
           model: 'gpt-4o-mini',
           messages: [{
             role: 'system',
-            content: 'You are a patent attorney conducting infringement analysis. Analyze claim overlap objectively.'
+            content: RELEVANCE_SCORING_PROMPT
           }, {
             role: 'user',
-            content: `Compare this patent: "${patent.title}" (${patent.abstract}) with this invention: "${invention_description}". Determine: (1) claim_overlap_percentage (0-100), (2) conflict_description (specific features), (3) infringement_likelihood (low/medium/high). Return JSON: {"claim_overlap_percentage": number, "conflict_description": "...", "infringement_likelihood": "..."}`
+            content: `Evaluate this patent:
+Patent Number: ${patent.patent_number}
+Title: ${patent.title}
+Abstract: ${patent.abstract}
+Assignee: ${patent.assignee}
+Filing Date: ${patent.filing_date}`
           }],
           temperature: 0.2,
           response_format: { type: "json_object" }
         })
       });
 
-      const analysisData = await analysisResponse.json();
-      const analysis = JSON.parse(analysisData.choices[0].message.content);
+      const scoringData = await scoringResponse.json();
+      const scoreAnalysis = JSON.parse(scoringData.choices[0].message.content);
 
-      // Calculate conflict severity (1-10)
-      const overlapWeight = analysis.claim_overlap_percentage * 0.4;
-      const statusWeight = 20; // Active patent
-      const litigationWeight = Math.random() * 20; // Mock data
-      const severityScore = Math.min(
-        Math.round((overlapWeight + statusWeight + litigationWeight) / 10),
-        10
-      );
+      // Only proceed with detailed analysis if relevance score >= 4
+      if (scoreAnalysis.overall_relevance_score >= 4) {
+        // STEP 2: Generate claim chart for high-risk patents
+        const CLAIM_CHART_PROMPT = `You are a patent litigation expert creating claim charts for infringement analysis.
 
-      // Only store conflicts with severity >= 4
-      if (severityScore >= 4) {
+TARGET INVENTION: ${invention_description}
+
+PATENT: ${patent.patent_number} - ${patent.title}
+
+Create a detailed claim-by-claim analysis. For each claim element:
+- Quote exact claim language
+- Map to specific features of target invention
+- Determine "MEETS" or "DOES NOT MEET"
+- Explain any ambiguous interpretations
+
+OUTPUT (JSON):
+{
+  "claim_elements": [
+    {
+      "element": "...",
+      "patent_language": "...",
+      "target_feature": "...",
+      "meets": true/false,
+      "analysis": "..."
+    }
+  ],
+  "infringement_conclusion": {
+    "literal_infringement": "yes/no/unclear",
+    "doctrine_of_equivalents": "possible/unlikely",
+    "overall_assessment": "high risk / medium risk / low risk"
+  },
+  "design_around_opportunities": ["opportunity 1", "opportunity 2"]
+}`;
+
+        const claimChartResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${openaiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: [{
+              role: 'system',
+              content: CLAIM_CHART_PROMPT
+            }, {
+              role: 'user',
+              content: 'Generate the claim chart analysis.'
+            }],
+            temperature: 0.2,
+            response_format: { type: "json_object" }
+          })
+        });
+
+        const claimData = await claimChartResponse.json();
+        const claimAnalysis = JSON.parse(claimData.choices[0].message.content);
+
+        // Calculate conflict severity based on relevance score
+        const severityScore = Math.round(scoreAnalysis.overall_relevance_score);
+
         const conflict = {
           analysis_id,
           patent_number: patent.patent_number,
@@ -92,10 +177,13 @@ serve(async (req) => {
           assignee: patent.assignee,
           filing_date: patent.filing_date,
           conflict_severity: severityScore,
-          claim_overlap_percentage: analysis.claim_overlap_percentage,
-          conflict_description: analysis.conflict_description,
+          claim_overlap_percentage: Math.round(scoreAnalysis.dimension_scores.claim_coverage.score * 10),
+          conflict_description: scoreAnalysis.key_overlapping_features.join('; '),
           legal_status: 'active',
-          relevant_claims: ['Claim 1', 'Claim 3', 'Claim 7']
+          relevant_claims: claimAnalysis.claim_elements
+            .filter((e: any) => e.meets)
+            .map((e: any) => e.element)
+            .slice(0, 5)
         };
 
         conflicts.push(conflict);
@@ -105,7 +193,7 @@ serve(async (req) => {
       }
 
       // Small delay to avoid rate limits
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise(resolve => setTimeout(resolve, 300));
     }
 
     const output = {

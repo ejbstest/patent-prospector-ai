@@ -20,7 +20,6 @@ serve(async (req) => {
   const startTime = Date.now();
 
   try {
-    // Parse and validate input
     const body = await req.json();
     const { analysis_id, conflicts, invention_description } = body;
     
@@ -29,12 +28,6 @@ serve(async (req) => {
     }
     if (!Array.isArray(conflicts)) {
       throw new Error('Invalid conflicts: must be an array');
-    }
-    if (!invention_description || typeof invention_description !== 'string') {
-      throw new Error('Invalid invention_description: must be a non-empty string');
-    }
-    if (invention_description.length > 10000) {
-      throw new Error('invention_description too long: max 10,000 characters');
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -67,7 +60,49 @@ serve(async (req) => {
     else if (riskScore <= 85) riskLevel = 'high';
     else riskLevel = 'critical';
 
-    // Generate Executive Summary with OpenAI
+    // PROMPT 5: Executive Summary Generator (Plain English)
+    const EXEC_SUMMARY_PROMPT = `You are a business consultant translating complex patent analysis into executive-friendly language.
+
+TARGET AUDIENCE: Startup founder with no legal background
+
+STRUCTURE (2-4 pages):
+
+PAGE 1: THE BOTTOM LINE
+- ONE-SENTENCE VERDICT: [Green/Yellow/Red] to proceed
+- OVERALL IP RISK SCORE: ${riskScore}/100 (${riskLevel})
+- TOP 3 KEY FINDINGS with "What we found", "Why it matters", "What to do"
+- ESTIMATED COST TO MITIGATE RISKS
+
+PAGE 2: COMPETITIVE LANDSCAPE
+- WHO OWNS PATENTS IN YOUR SPACE
+- PATENT ACTIVITY TIMELINE
+- YOUR COMPETITIVE POSITION
+
+PAGE 3: RISK BREAKDOWN
+- HIGH-RISK PATENTS (detailed)
+- MEDIUM-RISK PATENTS (summary)
+- LOW-RISK PATENTS (brief)
+
+PAGE 4: OPPORTUNITIES & RECOMMENDATIONS
+- WHITE SPACE OPPORTUNITIES
+- RECOMMENDED ACTION PLAN (immediate/near-term/long-term)
+- INVESTMENT REQUIRED
+
+WRITING STYLE:
+- Short sentences and paragraphs
+- Define legal terms in parentheses
+- Use bullet points generously
+- Include specific numbers (costs, timelines, patent counts)
+- No "legalese"
+- Professional but approachable
+
+TONE:
+- Honest about risks without being alarmist
+- Solution-oriented
+- Empowering
+
+OUTPUT: Plain text with Markdown formatting`;
+
     const summaryResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -78,10 +113,10 @@ serve(async (req) => {
         model: 'gpt-4o-mini',
         messages: [{
           role: 'system',
-          content: 'You are a patent attorney writing executive summaries for C-level executives. Be direct, clear, and actionable.'
+          content: EXEC_SUMMARY_PROMPT
         }, {
           role: 'user',
-          content: `Create a 1-page executive summary for this IP risk analysis:
+          content: `Create executive summary for:
           
 Invention: ${invention_description}
 Risk Score: ${riskScore}/100 (${riskLevel})
@@ -89,20 +124,63 @@ Conflicts Found: ${conflicts.length}
 High Severity: ${highSeverityCount}
 
 Top Conflicts:
-${conflicts.slice(0, 3).map((c: any) => `- ${c.patent_number}: ${c.conflict_description}`).join('\n')}
-
-Include: (1) Overall assessment (2) Top 3 key findings (3) Primary concerns (4) Bottom-line recommendation (proceed/caution/redesign) (5) Estimated mitigation cost range.`
+${conflicts.slice(0, 5).map((c: any) => `- ${c.patent_number}: ${c.conflict_description}`).join('\n')}`
         }],
         temperature: 0.3,
-        max_tokens: 1000
+        max_tokens: 3000
       })
     });
 
     const summaryData = await summaryResponse.json();
     const executiveSummary = summaryData.choices[0].message.content;
 
-    // Generate Mitigation Strategies
-    const mitigationResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+    // PROMPT 4: White Space Opportunity Identifier
+    const WHITE_SPACE_PROMPT = `You are an innovation strategist identifying patent white space opportunities.
+
+TARGET INVENTION: ${invention_description}
+CONFLICTS FOUND: ${conflicts.length}
+
+Identify 3-5 validated "white space" opportunity zones where the client can innovate without patent conflicts.
+
+METHODOLOGY:
+1. PATENT DENSITY MAPPING
+2. CROSS-DOMAIN ANALYSIS
+3. TEMPORAL ANALYSIS (expiring patents)
+4. FEATURE COMBINATION
+5. MARKET VALIDATION
+
+OUTPUT (JSON):
+{
+  "white_space_opportunities": [
+    {
+      "opportunity_id": 1,
+      "title": "...",
+      "description": "...",
+      "technology_category": "...",
+      "patent_density": "low/medium",
+      "key_differentiators": ["..."],
+      "market_potential": {
+        "estimated_market_size": "$XXM-$XXM",
+        "target_customers": ["..."],
+        "competitive_intensity": "low/medium/high",
+        "time_to_market": "X months"
+      },
+      "technical_feasibility": {
+        "difficulty": "easy/moderate/hard",
+        "required_capabilities": ["..."],
+        "development_time": "X months",
+        "estimated_cost": "$XX-XXK"
+      },
+      "patent_strategy": {
+        "patentability_assessment": "high/medium/low",
+        "recommended_claims_focus": ["..."],
+        "prior_art_gaps": "..."
+      }
+    }
+  ]
+}`;
+
+    const whiteSpaceResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openaiKey}`,
@@ -112,30 +190,93 @@ Include: (1) Overall assessment (2) Top 3 key findings (3) Primary concerns (4) 
         model: 'gpt-4o-mini',
         messages: [{
           role: 'system',
-          content: 'You are an IP strategist providing actionable design-around strategies.'
+          content: WHITE_SPACE_PROMPT
         }, {
           role: 'user',
-          content: `Based on these patent conflicts, create a prioritized action plan with immediate, near-term, and long-term strategies. Format as JSON: {"immediate": [{"strategy": "...", "description": "...", "cost_estimate": "...", "timeline": "...", "risk_reduction": number}], "near_term": [...], "long_term": [...]}.
-
-Conflicts:
-${conflicts.slice(0, 5).map((c: any) => `${c.patent_number}: ${c.conflict_description}`).join('\n')}`
+          content: 'Generate 3-5 white space opportunities.'
         }],
         temperature: 0.4,
-        max_tokens: 1500,
         response_format: { type: "json_object" }
       })
     });
 
-    const mitigationData = await mitigationResponse.json();
-    const mitigationStrategies = JSON.parse(mitigationData.choices[0].message.content);
+    const whiteSpaceData = await whiteSpaceResponse.json();
+    const whiteSpaceOpportunities = JSON.parse(whiteSpaceData.choices[0].message.content);
+
+    // PROMPT 6: Design-Around Strategy Generator
+    const DESIGN_AROUND_PROMPT = `You are a product engineer and patent attorney collaborating on design-around strategies.
+
+TARGET INVENTION: ${invention_description}
+
+Generate 3-5 specific, actionable design-around strategies for the top conflicting patents.
+
+CRITERIA:
+- Legally Sound (avoids infringement)
+- Technically Feasible
+- Commercially Viable
+- Cost-Effective
+- Defensible (creates own IP)
+
+OUTPUT (JSON):
+{
+  "design_around_strategies": [
+    {
+      "strategy_id": 1,
+      "strategy_name": "...",
+      "approach_type": "substitution/omission/addition/rearrangement",
+      "detailed_description": "...",
+      "specific_changes": ["..."],
+      "legal_analysis": {
+        "avoids_literal_infringement": true/false,
+        "avoids_doctrine_of_equivalents": true/false,
+        "confidence_level": "high/medium/low"
+      },
+      "technical_feasibility": {
+        "difficulty": "easy/moderate/hard",
+        "development_time": "X weeks"
+      },
+      "commercial_impact": {
+        "performance_change": "+/-X%",
+        "cost_change": "+/-$XXX"
+      },
+      "implementation_cost": {
+        "total_estimate": "$XX,XXX - $XX,XXX"
+      }
+    }
+  ]
+}`;
+
+    const designAroundResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openaiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [{
+          role: 'system',
+          content: DESIGN_AROUND_PROMPT
+        }, {
+          role: 'user',
+          content: `Generate design-around strategies for these conflicts:
+${conflicts.slice(0, 5).map((c: any) => `${c.patent_number}: ${c.conflict_description}`).join('\n')}`
+        }],
+        temperature: 0.4,
+        response_format: { type: "json_object" }
+      })
+    });
+
+    const designAroundData = await designAroundResponse.json();
+    const designAroundStrategies = JSON.parse(designAroundData.choices[0].message.content);
 
     // Compile full report
     const reportData = {
       executive_summary: executiveSummary,
       methodology: {
         data_sources: ['USPTO PatentsView', 'AI-powered semantic search'],
-        search_strategy: 'Multi-query approach with CPC classification filtering',
-        analysis_approach: 'AI-assisted conflict detection with semantic similarity scoring',
+        search_strategy: 'Enhanced multi-query approach with 10 diverse search strategies',
+        analysis_approach: 'AI-assisted conflict detection with comprehensive claim chart analysis',
         disclaimer: 'This report provides an informational snapshot and does not constitute legal advice.'
       },
       invention_overview: {
@@ -156,17 +297,19 @@ ${conflicts.slice(0, 5).map((c: any) => `${c.patent_number}: ${c.conflict_descri
         }
       },
       detailed_analysis: conflicts,
-      mitigation_strategies: mitigationStrategies,
+      white_space_opportunities: whiteSpaceOpportunities,
+      design_around_strategies: designAroundStrategies,
       next_steps: [
         'Review detailed claim charts for high-risk patents',
         'Consult with patent attorney for FTO opinion',
-        'Consider design modifications to avoid top conflicts',
+        'Explore white space opportunities for strategic positioning',
+        'Implement recommended design-around strategies',
         'Monitor patent landscape for new filings'
       ]
     };
 
     // Determine report type based on payment status
-    const reportType = analysis.payment_status === 'paid' ? 'full' : 'snapshot';
+    const reportType = analysis.payment_status === 'paid' || analysis.payment_status === 'exemption' ? 'full' : 'snapshot';
 
     // Store report
     await supabase.from('reports').insert({
@@ -182,8 +325,8 @@ ${conflicts.slice(0, 5).map((c: any) => `${c.patent_number}: ${c.conflict_descri
     await supabase
       .from('analyses')
       .update({ 
-        status: 'reviewing',
-        progress_percentage: 90,
+        status: 'complete',
+        progress_percentage: 100,
         risk_score: riskScore,
         risk_level: riskLevel,
         report_generated_at: new Date().toISOString()

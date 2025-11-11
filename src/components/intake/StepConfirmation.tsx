@@ -6,9 +6,10 @@ import { Card } from '@/components/ui/card';
 
 interface StepConfirmationProps {
   analysisId: string;
+  isExemption?: boolean;
 }
 
-export function StepConfirmation({ analysisId }: StepConfirmationProps) {
+export function StepConfirmation({ analysisId, isExemption = false }: StepConfirmationProps) {
   const navigate = useNavigate();
   const [countdown, setCountdown] = useState(5);
 
@@ -34,10 +35,13 @@ export function StepConfirmation({ analysisId }: StepConfirmationProps) {
       {/* Success Message */}
       <div className="space-y-3 max-w-2xl">
         <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-          Analysis Submitted Successfully!
+          {isExemption ? 'Complimentary Research Analysis Approved!' : 'Analysis Submitted Successfully!'}
         </h1>
         <p className="text-lg text-muted-foreground">
-          Your IP risk analysis is now being processed by our AI system
+          {isExemption 
+            ? 'Your complimentary research report—no payment required. Full analysis with all features included.'
+            : 'Your IP risk analysis is now being processed by our AI system'
+          }
         </p>
       </div>
 
@@ -65,6 +69,15 @@ export function StepConfirmation({ analysisId }: StepConfirmationProps) {
             <span className="text-sm">~5 minutes</span>
           </div>
         </div>
+
+        {isExemption && (
+          <div className="pt-2 border-t">
+            <div className="flex items-center gap-2 text-xs text-primary">
+              <Sparkles className="h-3 w-3" />
+              <span className="font-medium">Researcher Exemption Applied</span>
+            </div>
+          </div>
+        )}
       </Card>
 
       {/* What Happens Next */}
@@ -80,15 +93,15 @@ export function StepConfirmation({ analysisId }: StepConfirmationProps) {
           </li>
           <li className="flex items-start gap-2">
             <span className="text-primary">2.</span>
-            <span>We generate a <strong className="text-foreground">FREE preliminary risk assessment</strong></span>
+            <span>We generate a {isExemption ? <strong className="text-foreground">FULL complimentary analysis</strong> : <strong className="text-foreground">FREE preliminary risk assessment</strong>}</span>
           </li>
           <li className="flex items-start gap-2">
             <span className="text-primary">3.</span>
-            <span>You will see top potential conflicts and overall risk score</span>
+            <span>You will see {isExemption ? 'comprehensive claim charts, white space opportunities, and design-around strategies' : 'top potential conflicts and overall risk score'}</span>
           </li>
           <li className="flex items-start gap-2">
             <span className="text-primary">4.</span>
-            <span>Upgrade anytime for expert review & detailed claim analysis</span>
+            <span>{isExemption ? 'Export the full white-labeled PDF report when complete' : 'Upgrade anytime for expert review & detailed claim analysis'}</span>
           </li>
         </ul>
       </div>

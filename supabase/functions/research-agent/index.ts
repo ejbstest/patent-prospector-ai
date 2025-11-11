@@ -69,6 +69,42 @@ serve(async (req) => {
 
     console.log(`Research agent starting for analysis: ${analysis_id}`);
 
+    // PROMPT 1: Enhanced Patent Search Query Generator
+    const SEARCH_QUERY_PROMPT = `You are a patent search specialist with 20 years of experience. Your task is to generate optimal search queries for prior art discovery.
+
+INPUT:
+Invention description: ${invention_description}
+Technical keywords: ${technical_keywords || 'Not provided'}
+CPC classifications: ${cpc_classifications || 'Not provided'}
+
+TASK:
+Generate 10 diverse patent search queries that maximize recall and precision. Use these strategies:
+
+1. SEMANTIC VARIATIONS: Rephrase the core innovation using different technical terminology
+2. ABSTRACTION LEVELS: Create queries at different abstraction levels (high/mid/low)
+3. PROBLEM-SOLUTION FRAMING: Search for the problem being solved, not just the solution
+4. COMPONENT-BASED: Break down the invention into components and search for each
+5. CROSS-DOMAIN: Look for similar concepts in adjacent technology domains
+6. TEMPORAL COVERAGE: Include date ranges to catch recent and historical patents
+
+OUTPUT FORMAT (JSON):
+{
+  "queries": [
+    {
+      "query_number": 1,
+      "search_string": "full Boolean search query with operators",
+      "strategy": "which strategy above",
+      "expected_results": estimated number,
+      "priority": "high/medium/low",
+      "rationale": "why this query matters"
+    }
+  ],
+  "recommended_databases": ["USPTO", "EPO", "Lens.org"],
+  "estimated_total_patents": range estimate
+}
+
+BE CREATIVE. Think like a patent examiner trying to find reasons to reject this application.`;
+
     // Generate optimized search queries using Perplexity (with fallback to OpenAI)
     let searchQueries;
     
@@ -85,20 +121,21 @@ serve(async (req) => {
               model: 'llama-3.1-sonar-large-128k-online',
               messages: [{
                 role: 'system',
-                content: 'You are a patent search expert. Generate diverse patent search queries with technical terminology and CPC codes.'
+                content: SEARCH_QUERY_PROMPT
               }, {
                 role: 'user',
-                content: `Based on this invention: "${invention_description}", generate 5 diverse patent search queries. Return as JSON array with: {query, cpc_codes, rationale, priority}. Format: {"queries": [...]}`
+                content: 'Generate the 10 search queries as specified.'
               }],
               temperature: 0.3,
-              max_tokens: 1500
+              max_tokens: 2500
             })
           });
 
           if (!response.ok) throw new Error(`Perplexity API error: ${response.status}`);
           const data = await response.json();
           const content = data.choices[0].message.content;
-          return JSON.parse(content).queries;
+          const parsed = JSON.parse(content);
+          return parsed.queries || parsed;
         });
       } catch (error) {
         console.warn('Perplexity API failed, falling back to OpenAI:', error);
@@ -119,10 +156,10 @@ serve(async (req) => {
             model: 'gpt-4o-mini',
             messages: [{
               role: 'system',
-              content: 'You are a patent search expert. Generate diverse patent search queries.'
+              content: SEARCH_QUERY_PROMPT
             }, {
               role: 'user',
-              content: `Based on this invention: "${invention_description}", generate 5 diverse patent search queries. Return as JSON: {"queries": [{"query": "...", "cpc_codes": ["..."], "rationale": "...", "priority": 1-5}]}`
+              content: 'Generate the 10 search queries as specified.'
             }],
             temperature: 0.3,
             response_format: { type: "json_object" }
@@ -131,7 +168,8 @@ serve(async (req) => {
       });
 
       const data = await response.json();
-      searchQueries = JSON.parse(data.choices[0].message.content).queries;
+      const parsed = JSON.parse(data.choices[0].message.content);
+      searchQueries = parsed.queries || parsed;
     }
 
     console.log(`Generated ${searchQueries.length} search queries`);

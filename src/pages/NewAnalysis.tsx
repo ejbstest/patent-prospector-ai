@@ -32,6 +32,7 @@ export default function NewAnalysis() {
   const { currentStep, formData, setStep, nextStep, prevStep, markSaved, reset, isDirty, lastSaved, updateFormData } = useIntakeFormStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [analysisId, setAnalysisId] = useState<string | null>(null);
+  const [isExemptionAnalysis, setIsExemptionAnalysis] = useState(false);
   const [showDraftManager, setShowDraftManager] = useState(false);
   const [showSaveDraft, setShowSaveDraft] = useState(false);
 
@@ -75,18 +76,22 @@ export default function NewAnalysis() {
     });
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (isExemption = false) => {
     if (!user) return;
 
     setIsSubmitting(true);
     try {
-      const result = await createAnalysis({ userId: user.id, formData });
+      const result = await createAnalysis({ userId: user.id, formData, isExemption });
       
       if (result.success && result.analysisId) {
         setAnalysisId(result.analysisId);
+        setIsExemptionAnalysis(isExemption);
         nextStep(); // Move to confirmation
         reset(); // Clear form data
-        toast({ title: 'Analysis submitted successfully!' });
+        toast({ 
+          title: isExemption ? 'Exemption analysis created!' : 'Analysis submitted successfully!',
+          description: isExemption ? 'Your complimentary report will be generated.' : undefined
+        });
       } else {
         throw new Error('Failed to create analysis');
       }
@@ -102,6 +107,8 @@ export default function NewAnalysis() {
     }
   };
 
+  const handleExemptionSubmit = () => handleSubmit(true);
+
   const totalSteps = 11; // Fixed 11-step attorney flow
   const isConfirmation = analysisId !== null;
 
@@ -109,7 +116,7 @@ export default function NewAnalysis() {
   if (isConfirmation) {
     return (
       <div className="max-w-4xl mx-auto py-8">
-        <StepConfirmation analysisId={analysisId} />
+        <StepConfirmation analysisId={analysisId} isExemption={isExemptionAnalysis} />
       </div>
     );
   }
@@ -138,7 +145,7 @@ export default function NewAnalysis() {
       case 10:
         return <Step10DocumentUploads onNext={handleNext} onBack={handleBack} />;
       case 11:
-        return <Step11PaymentDelivery onNext={handleSubmit} onBack={handleBack} />;
+        return <Step11PaymentDelivery onNext={() => handleSubmit(false)} onExemption={handleExemptionSubmit} onBack={handleBack} />;
       default:
         return null;
     }

@@ -4,9 +4,10 @@ import type { FormData } from '@/stores/intakeFormStore';
 interface CreateAnalysisParams {
   userId: string;
   formData: FormData;
+  isExemption?: boolean;
 }
 
-export async function createAnalysis({ userId, formData }: CreateAnalysisParams) {
+export async function createAnalysis({ userId, formData, isExemption = false }: CreateAnalysisParams) {
   try {
     // Map attorney intake form data to analyses table fields
     const inventionTitle = formData.inventionTitle || 'Untitled Invention';
@@ -39,9 +40,10 @@ export async function createAnalysis({ userId, formData }: CreateAnalysisParams)
     const analysisType: 'standard' | 'premium' | 'whitespace' = 
       formData.analysisDepth === 'comprehensive' ? 'premium' : 'standard';
     
-    // All new analyses start as pending payment
-    const paymentStatus: 'unpaid' | 'pending' | 'paid' = 'pending';
-    const amountPaid = null; // Will be updated after Stripe payment
+    // Handle exemption vs normal payment
+    const paymentStatus: 'unpaid' | 'pending' | 'paid' | 'exemption' = 
+      isExemption ? 'exemption' : 'pending';
+    const amountPaid = isExemption ? 0 : null; // Exemptions are $0, others updated after payment
 
     // Create analysis record
     const { data: analysis, error: analysisError } = await supabase
@@ -92,12 +94,31 @@ export async function createAnalysis({ userId, formData }: CreateAnalysisParams)
       await Promise.all(uploadPromises);
     }
 
-    // Note: Analysis workflow will be triggered after payment is confirmed
-    // For now, we don't trigger any automated workflow until payment is processed
-    console.log('Analysis created successfully:', analysis.id);
-    console.log('Awaiting payment confirmation to start analysis...');
+    // Trigger workflow if exemption (immediate) or after payment confirmation
+    if (isExemption) {
+      console.log('Exemption analysis - triggering workflow immediately:', analysis.id);
+      
+      // Trigger the research agent to start the automated workflow
+      try {
+        await supabase.functions.invoke('research-agent', {
+          body: {
+            analysis_id: analysis.id,
+            invention_description: inventionDescription,
+            technical_keywords: technicalKeywords,
+            cpc_classifications: cpcClassifications,
+          }
+        });
+        console.log('Workflow triggered successfully for exemption analysis');
+      } catch (workflowError) {
+        console.error('Error triggering workflow:', workflowError);
+        // Don't fail the entire creation if workflow trigger fails
+      }
+    } else {
+      console.log('Analysis created successfully:', analysis.id);
+      console.log('Awaiting payment confirmation to start analysis...');
+    }
 
-    return { success: true, analysisId: analysis.id };
+    return { success: true, analysisId: analysis.id, isExemption };
   } catch (error) {
     console.error('Error creating analysis:', error);
     return { success: false, error };
