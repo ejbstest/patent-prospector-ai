@@ -48,9 +48,9 @@ export function Step6GeographicScope({ onNext, onBack }: Step6GeographicScopePro
   const handleToggleMarket = (code: string) => {
     const current = form.getValues('targetMarkets');
     if (current.includes(code)) {
-      form.setValue('targetMarkets', current.filter(c => c !== code));
+      form.setValue('targetMarkets', current.filter(c => c !== code), { shouldValidate: true });
     } else {
-      form.setValue('targetMarkets', [...current, code]);
+      form.setValue('targetMarkets', [...current, code], { shouldValidate: true });
     }
   };
 
@@ -131,7 +131,10 @@ export function Step6GeographicScope({ onNext, onBack }: Step6GeographicScopePro
                           ? 'border-primary bg-primary/5'
                           : 'hover:border-muted-foreground/50'
                       }`}
-                      onClick={() => field.onChange(market.code)}
+                      onClick={() => {
+                        field.onChange(market.code);
+                        form.trigger('priorityJurisdiction');
+                      }}
                     >
                       <div className="flex items-center gap-2">
                         <div
