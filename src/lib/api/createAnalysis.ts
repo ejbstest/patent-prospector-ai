@@ -8,42 +8,25 @@ interface CreateAnalysisParams {
 
 export async function createAnalysis({ userId, formData }: CreateAnalysisParams) {
   try {
-    // Prepare analysis data based on user type
-    let inventionTitle = '';
-    let inventionDescription = '';
-    let jurisdictions: string[] = [];
-    let cpcClassifications: string[] = [];
-
-    if (formData.userType === 'novice') {
-      inventionTitle = formData.productDescription?.slice(0, 100) || 'Product Analysis';
-      inventionDescription = [
-        formData.productDescription,
-        formData.uniqueness,
-        formData.competitors?.length ? `Competitors: ${formData.competitors.join(', ')}` : '',
-      ].filter(Boolean).join('\n\n');
-      jurisdictions = formData.regions || [];
-    } else if (formData.userType === 'intermediate') {
-      inventionTitle = formData.technicalDescription?.slice(0, 100) || 'Technical Invention';
-      inventionDescription = [
-        formData.technicalDescription,
-        formData.innovations?.length ? `Innovations:\n${formData.innovations.map((i, idx) => `${idx + 1}. ${i}`).join('\n')}` : '',
-      ].filter(Boolean).join('\n\n');
-      jurisdictions = formData.jurisdictions || [];
-      cpcClassifications = formData.cpcCodes || [];
-    } else if (formData.userType === 'expert') {
-      inventionTitle = formData.disclosure?.slice(0, 100) || 'Expert Analysis';
-      inventionDescription = [
-        formData.disclosure,
-        formData.claims?.length ? `Claims:\n${formData.claims.map((c, idx) => `${idx + 1}. ${c}`).join('\n')}` : '',
-      ].filter(Boolean).join('\n\n');
-      jurisdictions = ['US']; // Default for experts
-      cpcClassifications = formData.ipcCpcCodes || [];
-    }
-
-    // All analyses start as free preview (unpaid)
+    // Map attorney intake form data to analyses table fields
+    // Note: The form components currently use temporary mappings to the old FormData structure
+    // We extract the data from those temporary fields
+    
+    const inventionTitle = formData.disclosure || 'Untitled Invention'; // From Step2
+    const inventionDescription = formData.technicalDescription || ''; // From Step3
+    const jurisdictions = formData.regions || []; // From Step6
+    const cpcClassifications = formData.cpcCodes || []; // From Step5
+    
+    // Extract keywords from innovations for technical_keywords
+    const technicalKeywords = formData.innovations || [];
+    
+    // Determine analysis type (standard vs comprehensive) from Step9
+    // For now, default to 'standard' until we fully integrate Step9 data
     const analysisType: 'standard' | 'premium' | 'whitespace' = 'standard';
-    const paymentStatus: 'unpaid' | 'pending' | 'paid' = 'unpaid';
-    const amountPaid = null;
+    
+    // All new analyses start as paid (attorney flow requires payment upfront)
+    const paymentStatus: 'unpaid' | 'pending' | 'paid' = 'pending';
+    const amountPaid = null; // Will be updated after Stripe payment
 
     // Create analysis record
     const { data: analysis, error: analysisError } = await supabase
@@ -54,11 +37,12 @@ export async function createAnalysis({ userId, formData }: CreateAnalysisParams)
         invention_description: inventionDescription,
         jurisdictions,
         cpc_classifications: cpcClassifications,
+        technical_keywords: technicalKeywords,
         analysis_type: analysisType,
         payment_status: paymentStatus,
         amount_paid: amountPaid,
-        status: 'searching',
-        progress_percentage: 5,
+        status: 'submitted', // Start in submitted state, will move to queued after payment
+        progress_percentage: 0,
       }] as any)
       .select()
       .single();
@@ -93,17 +77,10 @@ export async function createAnalysis({ userId, formData }: CreateAnalysisParams)
       await Promise.all(uploadPromises);
     }
 
-    // Trigger preview generation workflow
+    // Note: Analysis workflow will be triggered after payment is confirmed
+    // For now, we don't trigger any automated workflow until payment is processed
     console.log('Analysis created successfully:', analysis.id);
-    console.log('Triggering preview generation...');
-    
-    // Call the preview generation edge function (fire and forget)
-    supabase.functions.invoke('generate-preview', {
-      body: { analysis_id: analysis.id }
-    }).then(({ error }) => {
-      if (error) console.error('Preview generation failed:', error);
-      else console.log('Preview generation started');
-    });
+    console.log('Awaiting payment confirmation to start analysis...');
 
     return { success: true, analysisId: analysis.id };
   } catch (error) {
