@@ -35,7 +35,7 @@ export function StepNavigation({
       )}
       
       <Button
-        type="submit"
+        type="button"
         onClick={onNext}
         disabled={!canGoNext || isLoading}
       >
