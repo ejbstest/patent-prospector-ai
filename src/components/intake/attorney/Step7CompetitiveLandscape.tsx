@@ -64,7 +64,7 @@ export function Step7CompetitiveLandscape({ onNext, onBack }: Step7CompetitiveLa
               <FormLabel>Direct Competitors *</FormLabel>
               <FormControl>
                 <BulletPointEditor
-                  points={field.value}
+                  points={field.value || []}
                   onChange={field.onChange}
                   placeholder="Company or product name"
                   minPoints={3}
@@ -123,7 +123,7 @@ export function Step7CompetitiveLandscape({ onNext, onBack }: Step7CompetitiveLa
         />
 
         <div>
-          <FormLabel>Recent Acquisitions in This Space (Optional)</FormLabel>
+          <div className="text-sm font-medium">Recent Acquisitions in This Space (Optional)</div>
           <div className="mt-3 space-y-2">
             {recentAcquisitions.map((acq, index) => (
               <div key={index} className="flex gap-2">
@@ -158,7 +158,7 @@ export function Step7CompetitiveLandscape({ onNext, onBack }: Step7CompetitiveLa
         </div>
 
         <div>
-          <FormLabel>Dominant Patent Holders (Optional)</FormLabel>
+          <div className="text-sm font-medium">Dominant Patent Holders (Optional)</div>
           <div className="mt-3 space-y-2">
             {dominantHolders.map((holder, index) => (
               <div key={index} className="flex gap-2">
