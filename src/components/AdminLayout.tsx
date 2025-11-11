@@ -19,7 +19,6 @@ import { useNavigate } from "react-router-dom";
 
 const navigation = [
   { name: "Overview", href: "/admin/dashboard", icon: LayoutDashboard },
-  { name: "Reviews Queue", href: "/admin/reviews", icon: FileText, badge: 3 },
   { name: "User Management", href: "/admin/users", icon: Users },
   { name: "Analytics", href: "/admin/analytics", icon: BarChart3 },
   { name: "System Health", href: "/admin/system", icon: Activity },

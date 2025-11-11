@@ -17,7 +17,7 @@ import ReportViewer from "./pages/ReportViewer";
 import Settings from "./pages/Settings";
 import Billing from "./pages/Billing";
 import AdminDashboard from "./pages/admin/Dashboard";
-import AdminReviews from "./pages/admin/Reviews";
+
 import AdminUsers from "./pages/admin/Users";
 import AdminAnalytics from "./pages/admin/Analytics";
 import AdminSystem from "./pages/admin/System";
@@ -98,13 +98,6 @@ const App = () => (
               <ProtectedRoute>
                 <AdminLayout>
                   <AdminDashboard />
-                </AdminLayout>
-              </ProtectedRoute>
-            } />
-            <Route path="/admin/reviews" element={
-              <ProtectedRoute>
-                <AdminLayout>
-                  <AdminReviews />
                 </AdminLayout>
               </ProtectedRoute>
             } />

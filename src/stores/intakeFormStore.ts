@@ -11,41 +11,71 @@ export interface UploadedFile {
 }
 
 export interface FormData {
-  // Step 1
-  userType: UserType;
+  // Step 1: Firm & Attorney Information
+  firmName?: string;
+  attorneyName?: string;
+  firmLogo?: File;
+  firmPrimaryColor?: string;
+  firmSecondaryColor?: string;
+  clientCompanyName?: string;
+  reportDeliveryEmail?: string;
   
-  // Novice fields
-  productDescription?: string;
-  uniqueness?: string;
-  competitors?: string[];
-  regions?: string[];
+  // Step 2: Invention Overview
+  inventionTitle?: string;
+  inventionCategory?: string;
+  valueProp?: string;
+  problemBeingSolved?: string;
+  solutionApproach?: string;
+  targetCustomers?: string;
   
-  // Intermediate fields
+  // Step 3: Technical Details
   technicalDescription?: string;
-  innovations?: string[];
-  cpcCodes?: string[];
-  priorArtPatents?: string[];
-  jurisdictions?: string[];
+  keyInnovations?: string[];
+  technicalSpecifications?: Record<string, any>;
+  diagrams?: File[];
   
-  // Expert fields
-  disclosure?: string;
-  claims?: string[];
-  ipcCpcCodes?: string[];
-  assignees?: string[];
-  priorArtReferences?: Array<{
-    patentNumber: string;
-    publicationDate?: string;
-    relevanceNotes?: string;
-  }>;
-  analysisParameters?: {
-    dateRange?: { start: string; end: string };
-    citationDepth?: number;
-    jurisdictionWeights?: Record<string, number>;
-  };
+  // Step 4: Prior Art Awareness
+  knownCompetitors?: string[];
+  knownPatents?: string[];
+  researchPapers?: string[];
+  tradePublications?: string[];
   
-  // Universal
+  // Step 5: Patent Classification
+  suggestedCpcCodes?: string[];
+  selectedCpcCodes?: string[];
+  primaryTechnologyDomains?: string[];
+  
+  // Step 6: Geographic Scope
+  targetMarkets?: string[];
+  priorityJurisdiction?: string;
+  manufacturingLocations?: string[];
+  
+  // Step 7: Competitive Landscape
+  directCompetitors?: Array<{ name: string; description: string }>;
+  indirectCompetitors?: string[];
+  marketLeaders?: string[];
+  recentAcquisitions?: string[];
+  dominantPatentHolders?: string[];
+  
+  // Step 8: Business Context
+  developmentStage?: string;
+  fundingStage?: string;
+  fundingTimeline?: string;
+  commercializationTimeline?: string;
+  
+  // Step 9: Analysis Preferences
+  analysisDepth?: 'standard' | 'comprehensive';
+  whiteSpaceAnalysis?: string[];
+  reportFormats?: string[];
+  turnaroundTime?: 'standard' | 'priority' | 'rush';
+  
+  // Step 10: Document Uploads
   uploadedFiles: UploadedFile[];
+  
+  // Step 11: Payment
   pricingTier: PricingTier;
+  totalCost?: number;
+  selectedAddons?: string[];
 }
 
 interface IntakeFormState {
@@ -67,19 +97,29 @@ interface IntakeFormState {
 }
 
 const initialFormData: FormData = {
-  userType: null,
-  competitors: [],
-  regions: [],
-  innovations: [],
-  cpcCodes: [],
-  priorArtPatents: [],
-  jurisdictions: [],
-  claims: [],
-  ipcCpcCodes: [],
-  assignees: [],
-  priorArtReferences: [],
+  firmPrimaryColor: '#7C3AED',
+  firmSecondaryColor: '#6D28D9',
+  keyInnovations: [],
+  knownCompetitors: [],
+  knownPatents: [],
+  researchPapers: [],
+  tradePublications: [],
+  suggestedCpcCodes: [],
+  selectedCpcCodes: [],
+  primaryTechnologyDomains: [],
+  targetMarkets: [],
+  directCompetitors: [],
+  indirectCompetitors: [],
+  marketLeaders: [],
+  recentAcquisitions: [],
+  dominantPatentHolders: [],
+  whiteSpaceAnalysis: [],
+  reportFormats: ['pdf'],
   uploadedFiles: [],
   pricingTier: null,
+  selectedAddons: [],
+  analysisDepth: 'standard',
+  turnaroundTime: 'standard',
 };
 
 export const useIntakeFormStore = create<IntakeFormState>()(
@@ -129,11 +169,7 @@ export const useIntakeFormStore = create<IntakeFormState>()(
       }),
 
       getTotalSteps: () => {
-        const { userType } = get().formData;
-        if (!userType) return 8; // Max possible
-        if (userType === 'novice') return 6; // 1 + 5 steps (no pricing)
-        if (userType === 'intermediate') return 7; // 1 + 6 steps (no pricing)
-        return 9; // expert: 1 + 8 steps (no pricing)
+        return 11; // All attorneys follow the same 11-step flow
       },
     }),
     {
