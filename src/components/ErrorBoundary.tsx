@@ -29,6 +29,11 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
         <div className="p-6 rounded-md border border-destructive/30 bg-destructive/5 text-destructive">
           <h3 className="font-medium">Something went wrong</h3>
           <p className="text-sm mt-1">Please try again or reload the page. The issue has been logged.</p>
+          {import.meta.env.DEV && this.state.error && (
+            <pre className="mt-3 text-xs whitespace-pre-wrap text-muted-foreground">
+              {this.state.error.name}: {this.state.error.message}
+            </pre>
+          )}
         </div>
       );
     }
