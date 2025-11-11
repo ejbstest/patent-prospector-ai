@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, ProtectedRoute } from "@/lib/auth";
 import { DashboardLayout } from "@/components/DashboardLayout";
+import { AdminLayout } from "@/components/AdminLayout";
 import Index from "./pages/Index";
 import SignUp from "./pages/SignUp";
 import Login from "./pages/Login";
@@ -15,6 +16,12 @@ import AnalysisDetail from "./pages/AnalysisDetail";
 import ReportViewer from "./pages/ReportViewer";
 import Settings from "./pages/Settings";
 import Billing from "./pages/Billing";
+import AdminDashboard from "./pages/admin/Dashboard";
+import AdminUsers from "./pages/admin/Users";
+import AdminAnalytics from "./pages/admin/Analytics";
+import AdminSystem from "./pages/admin/System";
+import AdminBilling from "./pages/admin/Billing";
+import AdminSettings from "./pages/admin/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +37,8 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/signup" element={<SignUp />} />
             <Route path="/login" element={<Login />} />
+            
+            {/* User Dashboard Routes */}
             <Route path="/dashboard" element={
               <ProtectedRoute>
                 <DashboardLayout>
@@ -77,7 +86,59 @@ const App = () => (
                 </DashboardLayout>
               </ProtectedRoute>
             } />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+
+            {/* Admin Portal Routes */}
+            <Route path="/admin/dashboard" element={
+              <ProtectedRoute>
+                <AdminLayout>
+                  <AdminDashboard />
+                </AdminLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/reviews" element={
+              <ProtectedRoute>
+                <AdminLayout>
+                  <AdminDashboard />
+                </AdminLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/users" element={
+              <ProtectedRoute>
+                <AdminLayout>
+                  <AdminUsers />
+                </AdminLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/analytics" element={
+              <ProtectedRoute>
+                <AdminLayout>
+                  <AdminAnalytics />
+                </AdminLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/system" element={
+              <ProtectedRoute>
+                <AdminLayout>
+                  <AdminSystem />
+                </AdminLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/billing" element={
+              <ProtectedRoute>
+                <AdminLayout>
+                  <AdminBilling />
+                </AdminLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/settings" element={
+              <ProtectedRoute>
+                <AdminLayout>
+                  <AdminSettings />
+                </AdminLayout>
+              </ProtectedRoute>
+            } />
+
+            {/* Catch-all route - MUST BE LAST */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
