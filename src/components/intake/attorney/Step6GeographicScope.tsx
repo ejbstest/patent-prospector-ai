@@ -55,18 +55,22 @@ export function Step6GeographicScope({ onNext, onBack }: Step6GeographicScopePro
     resolver: zodResolver(geographicScopeSchema),
     mode: 'onChange',
     defaultValues: {
-      targetMarkets: Array.isArray(formData.targetMarkets) ? formData.targetMarkets : [],
-      priorityJurisdiction: typeof formData.priorityJurisdiction === 'string' ? formData.priorityJurisdiction : '',
+      targetMarkets: Array.isArray(formData.targetMarkets) && formData.targetMarkets.length > 0 ? formData.targetMarkets : ['US'],
+      priorityJurisdiction: typeof formData.priorityJurisdiction === 'string' && formData.priorityJurisdiction ? formData.priorityJurisdiction : 'US',
       manufacturingLocations: typeof formData.manufacturingLocations === 'string' ? formData.manufacturingLocations : '',
     },
   });
 
   useEffect(() => {
-    const tm = Array.isArray(form.getValues('targetMarkets')) ? form.getValues('targetMarkets') as string[] : [];
-    const pj = form.getValues('priorityJurisdiction') as string;
-    if (pj && !tm.includes(pj)) {
-      form.setValue('priorityJurisdiction', '', { shouldValidate: true });
+    const tm = Array.isArray(form.getValues('targetMarkets')) ? (form.getValues('targetMarkets') as string[]) : [];
+    if (!tm.includes('US')) {
+      form.setValue('targetMarkets', ['US'], { shouldValidate: true });
     }
+    const pj = form.getValues('priorityJurisdiction') as string;
+    if (pj !== 'US') {
+      form.setValue('priorityJurisdiction', 'US', { shouldValidate: true });
+    }
+    form.trigger();
   }, []);
 
   const watchedTargetMarkets = form.watch('targetMarkets');
@@ -119,33 +123,20 @@ export function Step6GeographicScope({ onNext, onBack }: Step6GeographicScopePro
           render={() => (
             <FormItem>
               <FormLabel>Target Markets *</FormLabel>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-3">
-                {markets.map((market) => (
-                  <div
-                    key={market.code}
-                    className={`p-3 border rounded-md cursor-pointer transition-colors ${
-                      targetMarkets.includes(market.code)
-                        ? 'border-primary bg-primary/5'
-                        : 'hover:border-muted-foreground/50'
-                    }`}
-                    onClick={() => handleToggleMarket(market.code)}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Checkbox
-                        checked={targetMarkets.includes(market.code)}
-                        onCheckedChange={() => handleToggleMarket(market.code)}
-                      />
-                      <span className="text-2xl">{market.flag}</span>
-                      <div>
-                        <div className="text-sm font-medium">{market.name}</div>
-                        <div className="text-xs text-muted-foreground">{market.code}</div>
-                      </div>
+              <div className="grid grid-cols-1 gap-3 mt-3">
+                <div className="p-3 border rounded-md bg-primary/5 border-primary">
+                  <div className="flex items-center gap-2">
+                    <Checkbox checked disabled />
+                    <span className="text-2xl">🇺🇸</span>
+                    <div>
+                      <div className="text-sm font-medium">United States</div>
+                      <div className="text-xs text-muted-foreground">US</div>
                     </div>
                   </div>
-                ))}
+                </div>
               </div>
               <FormDescription>
-                Select all markets where the product will be sold or manufactured
+                Currently limited to the United States while we expand coverage.
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -158,40 +149,17 @@ export function Step6GeographicScope({ onNext, onBack }: Step6GeographicScopePro
           render={({ field }) => (
             <FormItem>
               <FormLabel>Priority Jurisdiction for FTO Analysis *</FormLabel>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-3">
-                {markets
-                  .filter(m => targetMarkets.includes(m.code))
-                  .map((market) => (
-                    <div
-                      key={market.code}
-                      className={`p-3 border rounded-md cursor-pointer transition-colors ${
-                        field.value === market.code
-                          ? 'border-primary bg-primary/5'
-                          : 'hover:border-muted-foreground/50'
-                      }`}
-                        onClick={() => {
-                          field.onChange(market.code);
-                          form.trigger('priorityJurisdiction');
-                        }}
-                    >
-                      <div className="flex items-center gap-2">
-                        <div
-                          className={`h-4 w-4 rounded-full border-2 flex items-center justify-center ${
-                            field.value === market.code ? 'border-primary' : 'border-muted-foreground'
-                          }`}
-                        >
-                          {field.value === market.code && (
-                            <div className="h-2 w-2 rounded-full bg-primary" />
-                          )}
-                        </div>
-                        <span className="text-2xl">{market.flag}</span>
-                        <span className="text-sm font-medium">{market.name}</span>
-                      </div>
-                    </div>
-                  ))}
+              <div className="p-3 border rounded-md bg-primary/5 border-primary">
+                <div className="flex items-center gap-2">
+                  <div className="h-4 w-4 rounded-full border-2 border-primary flex items-center justify-center">
+                    <div className="h-2 w-2 rounded-full bg-primary" />
+                  </div>
+                  <span className="text-2xl">🇺🇸</span>
+                  <span className="text-sm font-medium">United States</span>
+                </div>
               </div>
               <FormDescription>
-                Which jurisdiction is most critical for freedom to operate?
+                Currently fixed to United States while we expand coverage.
               </FormDescription>
               <FormMessage />
             </FormItem>
