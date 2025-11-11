@@ -1,1 +1,16 @@
 project_id = "tbnlvdytmqjwcmxdogdj"
+
+[functions.start-analysis]
+verify_jwt = false
+
+[functions.research-agent]
+verify_jwt = false
+
+[functions.analysis-agent]
+verify_jwt = false
+
+[functions.report-generator]
+verify_jwt = false
+
+[functions.deliver-report]
+verify_jwt = false
