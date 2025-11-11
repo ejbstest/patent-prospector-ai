@@ -37,8 +37,8 @@ export async function createAnalysis({ userId, formData, isExemption = false }: 
     ].filter(Boolean);
     
     // Determine analysis type from preferences
-    const analysisType: 'standard' | 'premium' | 'whitespace' = 
-      formData.analysisDepth === 'comprehensive' ? 'premium' : 'standard';
+    const analysisType: 'standard' | 'comprehensive' = 
+      formData.analysisDepth === 'comprehensive' ? 'comprehensive' : 'standard';
     
     // Handle exemption vs normal payment
     const paymentStatus: 'unpaid' | 'pending' | 'paid' | 'exemption' = 
