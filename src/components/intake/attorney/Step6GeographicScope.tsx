@@ -239,8 +239,20 @@ export function Step6GeographicScope({ onNext, onBack }: Step6GeographicScopePro
         />
 
         <StepNavigation
-          onBack={onBack}
-          onNext={form.handleSubmit(onSubmit)}
+          onBack={() => {
+            try {
+              onBack();
+            } catch (err) {
+              console.error('Step6GeographicScope: onBack error', err);
+            }
+          }}
+          onNext={form.handleSubmit((data) => {
+            try {
+              onSubmit(data);
+            } catch (err) {
+              console.error('Step6GeographicScope: onSubmit error', err, { data });
+            }
+          })}
           canGoNext={form.formState.isValid}
         />
       </form>

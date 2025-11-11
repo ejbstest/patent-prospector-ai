@@ -11,6 +11,7 @@ import { Check, Save, FolderOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DraftManager } from '@/components/intake/DraftManager';
 import { SaveDraftDialog } from '@/components/intake/SaveDraftDialog';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 // Attorney intake steps (11-step flow)
 import { Step1FirmInfo } from '@/components/intake/attorney/Step1FirmInfo';
@@ -58,7 +59,13 @@ export default function NewAnalysis() {
 
   const handleLoadDraft = (draft: any) => {
     setStep(draft.current_step);
-    updateFormData(draft.form_data);
+    const d = draft.form_data || {};
+    const normalized = {
+      targetMarkets: Array.isArray(d.targetMarkets) ? d.targetMarkets : (d.targetMarkets ? [d.targetMarkets] : []),
+      priorityJurisdiction: typeof d.priorityJurisdiction === 'string' ? d.priorityJurisdiction : '',
+      reportFormats: Array.isArray(d.reportFormats) ? d.reportFormats : (d.reportFormats ? [d.reportFormats] : ['pdf']),
+    };
+    updateFormData({ ...d, ...normalized });
     toast({
       title: 'Draft loaded',
       description: `Continuing from step ${draft.current_step}`,
@@ -172,7 +179,9 @@ export default function NewAnalysis() {
       <FormProgress currentStep={currentStep} totalSteps={totalSteps} />
 
       <div className="bg-card border border-border rounded-lg p-8">
-        {renderStep()}
+        <ErrorBoundary>
+          {renderStep()}
+        </ErrorBoundary>
       </div>
 
       <DraftManager
