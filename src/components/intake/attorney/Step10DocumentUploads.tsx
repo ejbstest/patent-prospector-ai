@@ -23,6 +23,9 @@ interface Step10DocumentUploadsProps {
 export function Step10DocumentUploads({ onNext, onBack }: Step10DocumentUploadsProps) {
   const { formData, addFile, removeFile, updateFormData } = useIntakeFormStore();
 
+  // Ensure uploadedFiles is always an array
+  const uploadedFiles = Array.isArray(formData.uploadedFiles) ? formData.uploadedFiles : [];
+
   const form = useForm({
     resolver: zodResolver(documentUploadsSchema),
     defaultValues: {
@@ -59,7 +62,7 @@ export function Step10DocumentUploads({ onNext, onBack }: Step10DocumentUploadsP
         <div>
           <FormLabel>Technical Documentation (Optional)</FormLabel>
           <FileUploadZone
-            files={formData.uploadedFiles.map(uf => uf.file)}
+            files={uploadedFiles.map(uf => uf.file)}
             onFilesAdd={(files) => {
               files.forEach((file) => {
                 addFile({ file, label: file.name });
