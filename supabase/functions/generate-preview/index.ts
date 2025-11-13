@@ -74,8 +74,8 @@ serve(async (req) => {
       })
       .eq('id', analysisId);
 
-    // Use Lovable AI for lightweight preview generation
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    // Use OpenRouter for lightweight preview generation
+    const openrouterApiKey = Deno.env.get('OPENROUTER_API_KEY')!;
     
     // Generate search queries for patent research
     const searchPrompt = `Based on this invention description, generate a brief preliminary patent risk assessment.
@@ -111,15 +111,16 @@ Format as JSON:
     let aiContent = '{}';
 
     try {
-      console.log('Calling Lovable AI for preview generation...');
-      const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      console.log('Calling OpenRouter for preview generation...');
+      const aiResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+          'Authorization': `Bearer ${openrouterApiKey}`,
           'Content-Type': 'application/json',
+          'HTTP-Referer': supabaseUrl, // Required by OpenRouter
         },
         body: JSON.stringify({
-          model: 'google/gemini-2.5-flash',
+          model: 'deepseek/deepseek-chat-v3-0324:free', // Using DeepSeek for consistency
           messages: [
             { 
               role: 'system', 
@@ -128,19 +129,23 @@ Format as JSON:
             { role: 'user', content: searchPrompt }
           ],
           temperature: 0.3,
+          response_format: { type: "json_object" },
+          provider: {
+            only: ['DeepSeek']
+          }
         }),
       });
 
       if (!aiResponse.ok) {
         const errorBody = await aiResponse.text();
-        console.error(`Lovable AI API error: ${aiResponse.status} - ${errorBody}`);
+        console.error(`OpenRouter API error: ${aiResponse.status} - ${errorBody}`);
         if (aiResponse.status === 429) {
-          throw new Error('AI rate limit exceeded. Please try again later.');
+          throw new Error('OpenRouter rate limit exceeded. Please try again later.');
         }
         if (aiResponse.status === 402) {
-          throw new Error('AI credits exhausted. Please add credits to continue.');
+          throw new Error('OpenRouter credits exhausted. Please add credits to continue.');
         }
-        throw new Error(`Lovable AI request failed with status: ${aiResponse.status}`);
+        throw new Error(`OpenRouter request failed with status: ${aiResponse.status}`);
       }
 
       const aiData = await aiResponse.json();
