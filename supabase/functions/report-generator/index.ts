@@ -1,6 +1,15 @@
+// @ts-ignore
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.81.0";
+// @ts-ignore
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+// @ts-ignore
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.0";
+
+declare const Deno: {
+  env: {
+    get(key: string): string | undefined;
+  };
+};
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -10,6 +19,18 @@ const corsHeaders = {
 function validateUUID(uuid: string): boolean {
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   return uuidRegex.test(uuid);
+}
+
+// Helper function to parse AI response content, handling markdown code blocks
+function parseAiResponseContent(content: string): any {
+  try {
+    const jsonMatch = content.match(/```json\n?([\s\S]*?)\n?```/) || content.match(/\{[\s\S]*\}/);
+    const jsonStr = jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : content;
+    return JSON.parse(jsonStr);
+  } catch (error) {
+    console.error('Failed to parse AI response content:', content, error);
+    throw new Error('Invalid JSON response from AI');
+  }
 }
 
 serve(async (req) => {
@@ -201,7 +222,7 @@ OUTPUT (JSON):
     });
 
     const whiteSpaceData = await whiteSpaceResponse.json();
-    const whiteSpaceOpportunities = JSON.parse(whiteSpaceData.choices[0].message.content);
+    const whiteSpaceOpportunities = parseAiResponseContent(whiteSpaceData.choices[0].message.content);
 
     // PROMPT 6: Design-Around Strategy Generator
     const DESIGN_AROUND_PROMPT = `You are a product engineer and patent attorney collaborating on design-around strategies.
@@ -268,7 +289,7 @@ ${conflicts.slice(0, 5).map((c: any) => `${c.patent_number}: ${c.conflict_descri
     });
 
     const designAroundData = await designAroundResponse.json();
-    const designAroundStrategies = JSON.parse(designAroundData.choices[0].message.content);
+    const designAroundStrategies = parseAiResponseContent(designAroundData.choices[0].message.content);
 
     // Compile full report
     const reportData = {
