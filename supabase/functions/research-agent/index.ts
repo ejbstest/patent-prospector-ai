@@ -64,8 +64,7 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY')!;
-    const openaiKey = Deno.env.get('OPENAI_API_KEY')!;
+    const openrouterApiKey = Deno.env.get('OPENROUTER_API_KEY')!;
 
     console.log(`Research agent starting for analysis: ${analysis_id}`);
 
@@ -105,97 +104,55 @@ OUTPUT FORMAT (JSON):
 
 BE CREATIVE. Think like a patent examiner trying to find reasons to reject this application.`;
 
-    // Generate optimized search queries using Lovable AI (Gemini) with OpenAI fallback
-    let searchQueries;
-    
-    try {
-      console.log('Generating search queries with Lovable AI (Gemini)...');
-      searchQueries = await retryWithBackoff(async () => {
-        const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${lovableApiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: 'google/gemini-2.5-flash',
-            messages: [{
-              role: 'system',
-              content: SEARCH_QUERY_PROMPT
-            }, {
-              role: 'user',
-              content: 'Generate the 10 search queries as specified. Return valid JSON only.'
-            }],
-            temperature: 0.3,
-            max_tokens: 2500,
-            response_format: { type: "json_object" }
-          })
-        });
-
-        if (response.status === 429) {
-          throw new Error('Rate limit exceeded on Lovable AI. Please try again later.');
-        }
-        if (response.status === 402) {
-          throw new Error('Lovable AI credits exhausted. Please add credits to your workspace.');
-        }
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`Lovable AI error: ${response.status} - ${errorText}`);
-        }
-        
-        const data = await response.json();
-        let content = data.choices[0].message.content;
-        
-        // Strip markdown code fences if present (Gemini sometimes adds them)
-        content = content.replace(/^```json\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
-        
-        const parsed = JSON.parse(content);
-        console.log('Successfully generated queries using Lovable AI (Gemini)');
-        return parsed.queries || parsed;
-      });
-    } catch (error) {
-      console.warn('Lovable AI failed, falling back to OpenAI:', error);
-      searchQueries = null;
-    }
-
-    // Fallback to OpenAI if Lovable AI failed
-    if (!searchQueries) {
-      const response = await retryWithBackoff(async () => {
-        const res = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${openaiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: 'gpt-4o-mini',
-            messages: [{
-              role: 'system',
-              content: SEARCH_QUERY_PROMPT
-            }, {
-              role: 'user',
-              content: 'Generate the 10 search queries as specified.'
-            }],
-            temperature: 0.3,
-            response_format: { type: "json_object" }
-          })
-        });
-
-        if (!res.ok) {
-          const errorText = await res.text();
-          throw new Error(`OpenAI API error: ${res.status} - ${errorText}`);
-        }
-        return res;
+    // Generate optimized search queries using OpenRouter with DeepSeek
+    console.log('Generating search queries with OpenRouter (DeepSeek)...');
+    const searchQueries = await retryWithBackoff(async () => {
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openrouterApiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': supabaseUrl,
+        },
+        body: JSON.stringify({
+          model: 'deepseek/deepseek-chat-v3-0324:free',
+          messages: [{
+            role: 'system',
+            content: SEARCH_QUERY_PROMPT
+          }, {
+            role: 'user',
+            content: 'Generate the 10 search queries as specified. Return valid JSON only.'
+          }],
+          temperature: 0.3,
+          max_tokens: 2500,
+          response_format: { type: "json_object" },
+          provider: {
+            only: ['DeepSeek']
+          }
+        })
       });
 
-      const data = await response.json();
-      if (!data.choices || !data.choices[0] || !data.choices[0].message || !data.choices[0].message.content) {
-        throw new Error('Invalid response structure from OpenAI API');
+      if (response.status === 429) {
+        throw new Error('Rate limit exceeded on OpenRouter. Please try again later.');
       }
-      const parsed = JSON.parse(data.choices[0].message.content);
-      searchQueries = parsed.queries || parsed;
-      console.log('Successfully generated queries using OpenAI (fallback)');
-    }
+      if (response.status === 402) {
+        throw new Error('OpenRouter credits exhausted. Please add credits.');
+      }
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`OpenRouter error: ${response.status} - ${errorText}`);
+      }
+      
+      const data = await response.json();
+      let content = data.choices[0].message.content;
+      
+      // Strip markdown code fences if present
+      content = content.replace(/^```json\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
+      
+      const parsed = JSON.parse(content);
+      console.log('Successfully generated queries using OpenRouter (DeepSeek)');
+      return parsed.queries || parsed;
+    });
 
     console.log(`Generated ${searchQueries.length} search queries`);
 
@@ -212,15 +169,16 @@ BE CREATIVE. Think like a patent examiner trying to find reasons to reject this 
       }))
     );
 
-    // Calculate semantic similarity using OpenAI embeddings
+    // Calculate semantic similarity using OpenRouter embeddings
     console.log('Calculating semantic similarity...');
     
     const embeddingResponse = await retryWithBackoff(async () => {
-      return await fetch('https://api.openai.com/v1/embeddings', {
+      return await fetch('https://openrouter.ai/api/v1/embeddings', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${openaiKey}`,
+          'Authorization': `Bearer ${openrouterApiKey}`,
           'Content-Type': 'application/json',
+          'HTTP-Referer': supabaseUrl,
         },
         body: JSON.stringify({
           model: 'text-embedding-3-small',
