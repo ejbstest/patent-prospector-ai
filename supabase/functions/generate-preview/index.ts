@@ -1,4 +1,6 @@
+// @ts-ignore
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts"
+// @ts-ignore
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.43.0'
 
 declare const Deno: {
@@ -52,6 +54,13 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Use xAI grok-4-fast-reasoning for preview generation
+    const xaiApiKey = Deno.env.get('XAI_API_KEY')!;
+    
+    if (!xaiApiKey) {
+      throw new Error('Missing required API key: XAI_API_KEY. Please configure it in Supabase secrets.');
+    }
+
     // Fetch analysis details
     const { data: analysis, error: analysisError } = await supabase
       .from('analyses')
@@ -72,8 +81,6 @@ serve(async (req) => {
       })
       .eq('id', analysisId);
 
-    // Use xAI grok-4-fast-reasoning for preview generation
-    const xaiApiKey = Deno.env.get('XAI_API_KEY')!;
     
     // Generate search queries for patent research
     const searchPrompt = `Based on this invention description, generate a brief preliminary patent risk assessment.

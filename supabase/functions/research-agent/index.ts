@@ -1,5 +1,8 @@
+// @ts-ignore
 import "https://deno.land/x/xhr@0.1.0/mod.ts"
+// @ts-ignore
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts"
+// @ts-ignore
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.43.0'
 
 declare const Deno: {
@@ -72,6 +75,10 @@ serve(async (req) => {
 
     const xaiApiKey = Deno.env.get('XAI_API_KEY')!;
     const openrouterApiKey = Deno.env.get('OPENROUTER_API_KEY')!;
+
+    if (!xaiApiKey || !openrouterApiKey) {
+      throw new Error('Missing required API keys (XAI_API_KEY or OPENROUTER_API_KEY). Please configure them in Supabase secrets.');
+    }
 
     console.log(`Research agent starting for analysis: ${analysis_id}`);
 

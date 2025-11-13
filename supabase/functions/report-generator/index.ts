@@ -1,5 +1,8 @@
+// @ts-ignore
 import "https://deno.land/x/xhr@0.1.0/mod.ts"
+// @ts-ignore
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts"
+// @ts-ignore
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.43.0'
 
 declare const Deno: {
@@ -53,6 +56,10 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
     const xaiApiKey = Deno.env.get('XAI_API_KEY')!;
+
+    if (!xaiApiKey) {
+      throw new Error('Missing required API key: XAI_API_KEY. Please configure it in Supabase secrets.');
+    }
 
     console.log(`Report generator starting for analysis: ${analysis_id}`);
 
