@@ -64,7 +64,7 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const perplexityKey = Deno.env.get('PERPLEXITY_API_KEY');
+    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY')!;
     const openaiKey = Deno.env.get('OPENAI_API_KEY')!;
 
     console.log(`Research agent starting for analysis: ${analysis_id}`);
@@ -105,45 +105,56 @@ OUTPUT FORMAT (JSON):
 
 BE CREATIVE. Think like a patent examiner trying to find reasons to reject this application.`;
 
-    // Generate optimized search queries using Perplexity (with fallback to OpenAI)
+    // Generate optimized search queries using Lovable AI (Gemini) with OpenAI fallback
     let searchQueries;
     
-    if (perplexityKey) {
-      try {
-        searchQueries = await retryWithBackoff(async () => {
-          const response = await fetch('https://api.perplexity.ai/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${perplexityKey}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              model: 'llama-3.1-sonar-large-128k-online',
-              messages: [{
-                role: 'system',
-                content: SEARCH_QUERY_PROMPT
-              }, {
-                role: 'user',
-                content: 'Generate the 10 search queries as specified.'
-              }],
-              temperature: 0.3,
-              max_tokens: 2500
-            })
-          });
-
-          if (!response.ok) throw new Error(`Perplexity API error: ${response.status}`);
-          const data = await response.json();
-          const content = data.choices[0].message.content;
-          const parsed = JSON.parse(content);
-          return parsed.queries || parsed;
+    try {
+      console.log('Generating search queries with Lovable AI (Gemini)...');
+      searchQueries = await retryWithBackoff(async () => {
+        const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${lovableApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'google/gemini-2.5-flash',
+            messages: [{
+              role: 'system',
+              content: SEARCH_QUERY_PROMPT
+            }, {
+              role: 'user',
+              content: 'Generate the 10 search queries as specified. Return valid JSON only.'
+            }],
+            temperature: 0.3,
+            max_tokens: 2500,
+            response_format: { type: "json_object" }
+          })
         });
-      } catch (error) {
-        console.warn('Perplexity API failed, falling back to OpenAI:', error);
-        searchQueries = null;
-      }
+
+        if (response.status === 429) {
+          throw new Error('Rate limit exceeded on Lovable AI. Please try again later.');
+        }
+        if (response.status === 402) {
+          throw new Error('Lovable AI credits exhausted. Please add credits to your workspace.');
+        }
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Lovable AI error: ${response.status} - ${errorText}`);
+        }
+        
+        const data = await response.json();
+        const content = data.choices[0].message.content;
+        const parsed = JSON.parse(content);
+        console.log('Successfully generated queries using Lovable AI (Gemini)');
+        return parsed.queries || parsed;
+      });
+    } catch (error) {
+      console.warn('Lovable AI failed, falling back to OpenAI:', error);
+      searchQueries = null;
     }
 
-    // Fallback to OpenAI if Perplexity failed or not available
+    // Fallback to OpenAI if Lovable AI failed
     if (!searchQueries) {
       const response = await retryWithBackoff(async () => {
         const res = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -179,6 +190,7 @@ BE CREATIVE. Think like a patent examiner trying to find reasons to reject this 
       }
       const parsed = JSON.parse(data.choices[0].message.content);
       searchQueries = parsed.queries || parsed;
+      console.log('Successfully generated queries using OpenAI (fallback)');
     }
 
     console.log(`Generated ${searchQueries.length} search queries`);
