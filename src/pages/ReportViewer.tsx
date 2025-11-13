@@ -52,8 +52,8 @@ export default function ReportViewer() {
         return;
       }
 
-      // Check payment status
-      if (analysisData.payment_status !== 'paid') {
+      // Check payment status (allow both 'paid' and 'exemption')
+      if (analysisData.payment_status !== 'paid' && analysisData.payment_status !== 'exemption') {
         toast({ 
           title: 'Upgrade required', 
           description: 'Please upgrade to view the full report',
@@ -101,10 +101,8 @@ export default function ReportViewer() {
   if (isLoading || !analysis) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading report...</p>
-        </div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+        <p className="text-muted-foreground">Loading report...</p>
       </div>
     );
   }
@@ -132,8 +130,6 @@ export default function ReportViewer() {
           .print\\:hidden { display: none !important; }
           .print\\:static { position: static !important; }
           .print\\:shadow-none { box-shadow: none !important; }
-          .page-break-before { page-break-before: always; }
-          .page-break-after { page-break-after: always; }
           body { background: white; }
         }
       `}</style>
@@ -213,9 +209,9 @@ export default function ReportViewer() {
 
               {/* Disclaimers */}
               <section className="text-xs text-muted-foreground border-t pt-6 space-y-2">
-                <p><strong>Legal Disclaimer:</strong> This report is for informational purposes only and does not constitute legal advice. Consult with a licensed patent attorney before making business decisions based on this analysis.</p>
+                <p><strong>Legal Disclaimer:</strong> This report is for informational purposes only and does not constitute legal advice. Consult with a licensed patent attorney for legal guidance.</p>
                 <p><strong>Accuracy:</strong> While we strive for accuracy, patent data may be incomplete or outdated. Some patents may be pending or not yet published.</p>
-                <p><strong>Liability:</strong> We are not liable for any decisions made based on this report. This analysis represents a snapshot in time and the patent landscape may change.</p>
+                <p><strong>Liability:</strong> We are not liable for decisions you make based on our reports. This analysis represents a snapshot in time and the patent landscape may change.</p>
               </section>
             </div>
           </div>

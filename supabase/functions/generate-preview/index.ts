@@ -1,7 +1,5 @@
-// @ts-ignore
-import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-// @ts-ignore
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.0";
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.43.0'
 
 declare const Deno: {
   env: {
@@ -74,8 +72,8 @@ serve(async (req) => {
       })
       .eq('id', analysisId);
 
-    // Use OpenRouter for lightweight preview generation
-    const openrouterApiKey = Deno.env.get('OPENROUTER_API_KEY')!;
+    // Use xAI grok-4-fast-reasoning for preview generation
+    const xaiApiKey = Deno.env.get('XAI_API_KEY')!;
     
     // Generate search queries for patent research
     const searchPrompt = `Based on this invention description, generate a brief preliminary patent risk assessment.
@@ -111,16 +109,15 @@ Format as JSON:
     let aiContent = '{}';
 
     try {
-      console.log('Calling OpenRouter for preview generation...');
-      const aiResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      console.log('Calling xAI for preview generation...');
+      const aiResponse = await fetch('https://api.x.ai/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${openrouterApiKey}`,
+          'Authorization': `Bearer ${xaiApiKey}`,
           'Content-Type': 'application/json',
-          'HTTP-Referer': supabaseUrl, // Required by OpenRouter
         },
         body: JSON.stringify({
-          model: 'deepseek/deepseek-chat-v3-0324:free', // Using DeepSeek for consistency
+          model: 'grok-4-fast-reasoning',
           messages: [
             { 
               role: 'system', 
@@ -129,23 +126,20 @@ Format as JSON:
             { role: 'user', content: searchPrompt }
           ],
           temperature: 0.3,
-          response_format: { type: "json_object" },
-          provider: {
-            only: ['DeepSeek']
-          }
+          response_format: { type: "json_object" }
         }),
       });
 
       if (!aiResponse.ok) {
         const errorBody = await aiResponse.text();
-        console.error(`OpenRouter API error: ${aiResponse.status} - ${errorBody}`);
+        console.error(`xAI API error: ${aiResponse.status} - ${errorBody}`);
         if (aiResponse.status === 429) {
-          throw new Error('OpenRouter rate limit exceeded. Please try again later.');
+          throw new Error('xAI rate limit exceeded. Please try again later.');
         }
         if (aiResponse.status === 402) {
-          throw new Error('OpenRouter credits exhausted. Please add credits to continue.');
+          throw new Error('xAI credits exhausted. Please add credits to continue.');
         }
-        throw new Error(`OpenRouter request failed with status: ${aiResponse.status}`);
+        throw new Error(`xAI request failed with status: ${aiResponse.status}`);
       }
 
       const aiData = await aiResponse.json();

@@ -1,7 +1,5 @@
-// @ts-ignore
-import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-// @ts-ignore
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.0";
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.43.0'
 
 declare const Deno: {
   env: {
@@ -90,7 +88,9 @@ serve(async (req) => {
         analysis.risk_level === 'medium' ? '#FFB020' :
         analysis.risk_level === 'high' ? '#FF6B35' : '#DC2626';
 
-      const emailHtml = analysis.payment_status === 'paid' 
+      // Use exemption status to determine email content
+      const isExemption = analysis.payment_status === 'exemption';
+      const emailHtml = isExemption 
         ? `
           <h1>Your IP Risk Analysis is Complete!</h1>
           <p>Hi ${user.full_name || 'there'},</p>

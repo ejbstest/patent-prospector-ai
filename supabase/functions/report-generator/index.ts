@@ -1,9 +1,6 @@
-// @ts-ignore
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
-// @ts-ignore
-import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-// @ts-ignore
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.0";
+import "https://deno.land/x/xhr@0.1.0/mod.ts"
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.43.0'
 
 declare const Deno: {
   env: {
@@ -55,7 +52,7 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
-    const openaiKey = Deno.env.get('OPENAI_API_KEY')!;
+    const xaiApiKey = Deno.env.get('XAI_API_KEY')!;
 
     console.log(`Report generator starting for analysis: ${analysis_id}`);
 
@@ -133,14 +130,14 @@ TONE:
 - Empowering
 
 OUTPUT: Plain text with Markdown formatting`;
-      const summaryResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      const summaryResponse = await fetch('https://api.x.ai/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${openaiKey}`,
+          'Authorization': `Bearer ${xaiApiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
+          model: 'grok-4-fast-reasoning',
           messages: [{
             role: 'system',
             content: EXEC_SUMMARY_PROMPT
@@ -163,7 +160,7 @@ ${conflicts.slice(0, 5).map((c: any) => `- ${c.patent_number}: ${c.conflict_desc
 
       if (!summaryResponse.ok) {
         const errorText = await summaryResponse.text();
-        throw new Error(`OpenAI Executive Summary API error: ${summaryResponse.status} - ${errorText}`);
+        throw new Error(`xAI Executive Summary API error: ${summaryResponse.status} - ${errorText}`);
       }
 
       const summaryData = await summaryResponse.json();
@@ -221,14 +218,14 @@ OUTPUT (JSON):
   ]
 }`;
 
-        const whiteSpaceResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        const whiteSpaceResponse = await fetch('https://api.x.ai/v1/chat/completions', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${openaiKey}`,
+            'Authorization': `Bearer ${xaiApiKey}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'gpt-4o-mini',
+            model: 'grok-4-fast-reasoning',
             messages: [{
               role: 'system',
               content: WHITE_SPACE_PROMPT
@@ -243,7 +240,7 @@ OUTPUT (JSON):
 
         if (!whiteSpaceResponse.ok) {
           const errorText = await whiteSpaceResponse.text();
-          throw new Error(`OpenAI White Space API error: ${whiteSpaceResponse.status} - ${errorText}`);
+          throw new Error(`xAI White Space API error: ${whiteSpaceResponse.status} - ${errorText}`);
         }
 
         const whiteSpaceData = await whiteSpaceResponse.json();
@@ -298,14 +295,14 @@ OUTPUT (JSON):
   ]
 }`;
 
-      const designAroundResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      const designAroundResponse = await fetch('https://api.x.ai/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${openaiKey}`,
+          'Authorization': `Bearer ${xaiApiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
+          model: 'grok-4-fast-reasoning',
           messages: [{
             role: 'system',
             content: DESIGN_AROUND_PROMPT
@@ -321,7 +318,7 @@ ${conflicts.slice(0, 5).map((c: any) => `${c.patent_number}: ${c.conflict_descri
 
       if (!designAroundResponse.ok) {
         const errorText = await designAroundResponse.text();
-        throw new Error(`OpenAI Design-Around API error: ${designAroundResponse.status} - ${errorText}`);
+        throw new Error(`xAI Design-Around API error: ${designAroundResponse.status} - ${errorText}`);
       }
 
       const designAroundData = await designAroundResponse.json();

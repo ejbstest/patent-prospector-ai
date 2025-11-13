@@ -1,9 +1,6 @@
-// @ts-ignore
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
-// @ts-ignore
-import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-// @ts-ignore
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.0";
+import "https://deno.land/x/xhr@0.1.0/mod.ts"
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.43.0'
 
 declare const Deno: {
   env: {
@@ -73,6 +70,7 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    const xaiApiKey = Deno.env.get('XAI_API_KEY')!;
     const openrouterApiKey = Deno.env.get('OPENROUTER_API_KEY')!;
 
     console.log(`Research agent starting for analysis: ${analysis_id}`);
@@ -115,18 +113,17 @@ BE CREATIVE. Think like a patent examiner trying to find reasons to reject this 
 
     let searchQueries: any[] = [];
     try {
-      // Generate optimized search queries using OpenRouter with DeepSeek
-      console.log('Generating search queries with OpenRouter (DeepSeek)...');
+      // Generate optimized search queries using xAI grok-4-fast-reasoning
+      console.log('Generating search queries with xAI grok-4-fast-reasoning...');
       const response = await retryWithBackoff(async () => {
-        return await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        return await fetch('https://api.x.ai/v1/chat/completions', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${openrouterApiKey}`,
+            'Authorization': `Bearer ${xaiApiKey}`,
             'Content-Type': 'application/json',
-            'HTTP-Referer': supabaseUrl,
           },
           body: JSON.stringify({
-            model: 'deepseek/deepseek-chat-v3-0324:free',
+            model: 'grok-4-fast-reasoning',
             messages: [{
               role: 'system',
               content: SEARCH_QUERY_PROMPT
@@ -136,23 +133,20 @@ BE CREATIVE. Think like a patent examiner trying to find reasons to reject this 
             }],
             temperature: 0.3,
             max_tokens: 2500,
-            response_format: { type: "json_object" },
-            provider: {
-              only: ['DeepSeek']
-            }
+            response_format: { type: "json_object" }
           })
         });
       });
 
       if (response.status === 429) {
-        throw new Error('Rate limit exceeded on OpenRouter. Please try again later.');
+        throw new Error('xAI rate limit exceeded. Please try again later.');
       }
       if (response.status === 402) {
-        throw new Error('OpenRouter credits exhausted. Please add credits.');
+        throw new Error('xAI credits exhausted. Please add credits.');
       }
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`OpenRouter error: ${response.status} - ${errorText}`);
+        throw new Error(`xAI error: ${response.status} - ${errorText}`);
       }
       
       const data = await response.json();
@@ -162,7 +156,7 @@ BE CREATIVE. Think like a patent examiner trying to find reasons to reject this 
       content = content.replace(/^```json\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
       
       const parsed = JSON.parse(content);
-      console.log('Successfully generated queries using OpenRouter (DeepSeek)');
+      console.log('Successfully generated queries using xAI grok-4-fast-reasoning');
       searchQueries = parsed.queries || []; // Ensure it's an array
     } catch (aiError) {
       console.error('Error generating search queries:', aiError);
@@ -198,7 +192,7 @@ BE CREATIVE. Think like a patent examiner trying to find reasons to reject this 
             'HTTP-Referer': supabaseUrl,
           },
           body: JSON.stringify({
-            model: 'text-embedding-3-small',
+            model: 'mistralai/mistral-embed-2312',
             input: invention_description
           })
         });
@@ -225,7 +219,7 @@ BE CREATIVE. Think like a patent examiner trying to find reasons to reject this 
       patents_found: mockPatents.length,
       top_relevant_patents: rankedPatents.slice(0, 50),
       search_queries_used: searchQueries,
-      embedding_model: 'text-embedding-3-small'
+      embedding_model: 'mistralai/mistral-embed-2312'
     };
 
     // Update progress

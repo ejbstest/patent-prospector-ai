@@ -1,9 +1,6 @@
-// @ts-ignore
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
-// @ts-ignore
-import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-// @ts-ignore
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.0";
+import "https://deno.land/x/xhr@0.1.0/mod.ts"
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.43.0'
 
 declare const Deno: {
   env: {
@@ -61,7 +58,7 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
-    const openaiKey = Deno.env.get('OPENAI_API_KEY')!;
+    const xaiApiKey = Deno.env.get('XAI_API_KEY')!;
 
     console.log(`Analysis agent processing ${patents.length} patents`);
 
@@ -111,14 +108,14 @@ Be conservative—overestimate risk rather than underestimate.`;
 
       // STEP 1: Score patent relevance
       try {
-        const scoringResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        const scoringResponse = await fetch('https://api.x.ai/v1/chat/completions', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${openaiKey}`,
+            'Authorization': `Bearer ${xaiApiKey}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'gpt-4o-mini',
+            model: 'grok-4-fast-reasoning',
             messages: [{
               role: 'system',
               content: RELEVANCE_SCORING_PROMPT
@@ -138,7 +135,7 @@ Filing Date: ${patent.filing_date}`
 
         if (!scoringResponse.ok) {
           const errorText = await scoringResponse.text();
-          throw new Error(`OpenAI Relevance Scoring API error: ${scoringResponse.status} - ${errorText}`);
+          throw new Error(`xAI Relevance Scoring API error: ${scoringResponse.status} - ${errorText}`);
         }
 
         const scoringData = await scoringResponse.json();
@@ -188,14 +185,14 @@ OUTPUT (JSON):
   "design_around_opportunities": ["opportunity 1", "opportunity 2"]
 }`;
 
-          const claimChartResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+          const claimChartResponse = await fetch('https://api.x.ai/v1/chat/completions', {
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${openaiKey}`,
+              'Authorization': `Bearer ${xaiApiKey}`,
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              model: 'gpt-4o-mini',
+              model: 'grok-4-fast-reasoning',
               messages: [{
                 role: 'system',
                 content: CLAIM_CHART_PROMPT
@@ -210,7 +207,7 @@ OUTPUT (JSON):
 
           if (!claimChartResponse.ok) {
             const errorText = await claimChartResponse.text();
-            throw new Error(`OpenAI Claim Chart API error: ${claimChartResponse.status} - ${errorText}`);
+            throw new Error(`xAI Claim Chart API error: ${claimChartResponse.status} - ${errorText}`);
           }
 
           const claimData = await claimChartResponse.json();
