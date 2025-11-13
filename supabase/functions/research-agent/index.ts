@@ -144,7 +144,11 @@ BE CREATIVE. Think like a patent examiner trying to find reasons to reject this 
         }
         
         const data = await response.json();
-        const content = data.choices[0].message.content;
+        let content = data.choices[0].message.content;
+        
+        // Strip markdown code fences if present (Gemini sometimes adds them)
+        content = content.replace(/^```json\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
+        
         const parsed = JSON.parse(content);
         console.log('Successfully generated queries using Lovable AI (Gemini)');
         return parsed.queries || parsed;
