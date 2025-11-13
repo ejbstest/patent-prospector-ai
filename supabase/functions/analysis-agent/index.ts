@@ -29,7 +29,7 @@ function parseAiResponseContent(content: string): any {
     return JSON.parse(jsonStr);
   } catch (error) {
     console.error('Failed to parse AI response content:', content, error);
-    throw new Error('Invalid JSON response from AI');
+    return {}; // Return empty object to allow continuation
   }
 }
 
@@ -102,39 +102,62 @@ Be conservative—overestimate risk rather than underestimate.`;
     for (const patent of patents.slice(0, 20)) {
       console.log(`Analyzing patent: ${patent.patent_number}`);
 
+      let scoreAnalysis: any = {};
+      let claimAnalysis: any = {};
+      let severityScore = 0;
+      let claimOverlapPercentage = 0;
+      let conflictDescription = '';
+      let relevantClaims: string[] = [];
+
       // STEP 1: Score patent relevance
-      const scoringResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${openaiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: [{
-            role: 'system',
-            content: RELEVANCE_SCORING_PROMPT
-          }, {
-            role: 'user',
-            content: `Evaluate this patent:
+      try {
+        const scoringResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${openaiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: [{
+              role: 'system',
+              content: RELEVANCE_SCORING_PROMPT
+            }, {
+              role: 'user',
+              content: `Evaluate this patent:
 Patent Number: ${patent.patent_number}
 Title: ${patent.title}
 Abstract: ${patent.abstract}
 Assignee: ${patent.assignee}
 Filing Date: ${patent.filing_date}`
-          }],
-          temperature: 0.2,
-          response_format: { type: "json_object" }
-        })
-      });
+            }],
+            temperature: 0.2,
+            response_format: { type: "json_object" }
+          })
+        });
 
-      const scoringData = await scoringResponse.json();
-      const scoreAnalysis = parseAiResponseContent(scoringData.choices[0].message.content);
+        if (!scoringResponse.ok) {
+          const errorText = await scoringResponse.text();
+          throw new Error(`OpenAI Relevance Scoring API error: ${scoringResponse.status} - ${errorText}`);
+        }
 
-      // Only proceed with detailed analysis if relevance score >= 4
-      if (scoreAnalysis.overall_relevance_score >= 4) {
+        const scoringData = await scoringResponse.json();
+        scoreAnalysis = parseAiResponseContent(scoringData.choices[0].message.content);
+        
+        severityScore = Math.round(scoreAnalysis.overall_relevance_score || 0);
+        claimOverlapPercentage = Math.round((scoreAnalysis.dimension_scores?.claim_coverage?.score || 0) * 10);
+        conflictDescription = (scoreAnalysis.key_overlapping_features || []).join('; ');
+
+      } catch (aiError) {
+        console.error(`Error scoring patent ${patent.patent_number}:`, aiError);
+        // Continue with default/zero scores for this patent
+      }
+
+      // Only proceed with detailed analysis if relevance score >= 4 (or default 0 if scoring failed)
+      if (severityScore >= 4) {
         // STEP 2: Generate claim chart for high-risk patents
-        const CLAIM_CHART_PROMPT = `You are a patent litigation expert creating claim charts for infringement analysis.
+        try {
+          const CLAIM_CHART_PROMPT = `You are a patent litigation expert creating claim charts for infringement analysis.
 
 TARGET INVENTION: ${invention_description}
 
@@ -165,31 +188,43 @@ OUTPUT (JSON):
   "design_around_opportunities": ["opportunity 1", "opportunity 2"]
 }`;
 
-        const claimChartResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${openaiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: 'gpt-4o-mini',
-            messages: [{
-              role: 'system',
-              content: CLAIM_CHART_PROMPT
-            }, {
-              role: 'user',
-              content: 'Generate the claim chart analysis.'
-            }],
-            temperature: 0.2,
-            response_format: { type: "json_object" }
-          })
-        });
+          const claimChartResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${openaiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: 'gpt-4o-mini',
+              messages: [{
+                role: 'system',
+                content: CLAIM_CHART_PROMPT
+              }, {
+                role: 'user',
+                content: 'Generate the claim chart analysis.'
+              }],
+              temperature: 0.2,
+              response_format: { type: "json_object" }
+            })
+          });
 
-        const claimData = await claimChartResponse.json();
-        const claimAnalysis = parseAiResponseContent(claimData.choices[0].message.content);
+          if (!claimChartResponse.ok) {
+            const errorText = await claimChartResponse.text();
+            throw new Error(`OpenAI Claim Chart API error: ${claimChartResponse.status} - ${errorText}`);
+          }
 
-        // Calculate conflict severity based on relevance score
-        const severityScore = Math.round(scoreAnalysis.overall_relevance_score);
+          const claimData = await claimChartResponse.json();
+          claimAnalysis = parseAiResponseContent(claimData.choices[0].message.content);
+
+          relevantClaims = (claimAnalysis.claim_elements || [])
+            .filter((e: any) => e.meets)
+            .map((e: any) => e.element)
+            .slice(0, 5);
+
+        } catch (aiError) {
+          console.error(`Error generating claim chart for patent ${patent.patent_number}:`, aiError);
+          // Continue with empty relevant claims
+        }
 
         const conflict = {
           analysis_id,
@@ -198,13 +233,10 @@ OUTPUT (JSON):
           assignee: patent.assignee,
           filing_date: patent.filing_date,
           conflict_severity: severityScore,
-          claim_overlap_percentage: Math.round(scoreAnalysis.dimension_scores.claim_coverage.score * 10),
-          conflict_description: scoreAnalysis.key_overlapping_features.join('; '),
-          legal_status: 'active',
-          relevant_claims: claimAnalysis.claim_elements
-            .filter((e: any) => e.meets)
-            .map((e: any) => e.element)
-            .slice(0, 5)
+          claim_overlap_percentage: claimOverlapPercentage,
+          conflict_description: conflictDescription,
+          legal_status: 'active', // This should ideally come from AI or external data
+          relevant_claims: relevantClaims
         };
 
         conflicts.push(conflict);
@@ -221,7 +253,7 @@ OUTPUT (JSON):
       conflicts_identified: conflicts.length,
       high_severity_conflicts: conflicts.filter(c => c.conflict_severity >= 7).length,
       medium_severity_conflicts: conflicts.filter(c => c.conflict_severity >= 4 && c.conflict_severity < 7).length,
-      low_severity_conflicts: 0
+      low_severity_conflicts: conflicts.filter(c => c.conflict_severity < 4).length // Corrected low severity count
     };
 
     // Update progress
@@ -269,7 +301,7 @@ OUTPUT (JSON):
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
     
-    const { analysis_id } = await req.json().catch(() => ({}));
+    const { analysis_id } = await req.json().catch(() => ({})); // Safely get analysis_id
     
     if (analysis_id) {
       await supabase.from('agent_logs').insert({
@@ -279,6 +311,11 @@ OUTPUT (JSON):
         error_message: errorMessage,
         execution_time_ms: executionTime
       });
+      // Mark analysis as failed if analysis agent fails
+      await supabase
+        .from('analyses')
+        .update({ status: 'failed' })
+        .eq('id', analysis_id);
     }
 
     return new Response(

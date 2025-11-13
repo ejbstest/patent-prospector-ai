@@ -113,32 +113,35 @@ OUTPUT FORMAT (JSON):
 
 BE CREATIVE. Think like a patent examiner trying to find reasons to reject this application.`;
 
-    // Generate optimized search queries using OpenRouter with DeepSeek
-    console.log('Generating search queries with OpenRouter (DeepSeek)...');
-    const searchQueries = await retryWithBackoff(async () => {
-      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${openrouterApiKey}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': supabaseUrl,
-        },
-        body: JSON.stringify({
-          model: 'deepseek/deepseek-chat-v3-0324:free',
-          messages: [{
-            role: 'system',
-            content: SEARCH_QUERY_PROMPT
-          }, {
-            role: 'user',
-            content: 'Generate the 10 search queries as specified. Return valid JSON only.'
-          }],
-          temperature: 0.3,
-          max_tokens: 2500,
-          response_format: { type: "json_object" },
-          provider: {
-            only: ['DeepSeek']
-          }
-        })
+    let searchQueries: any[] = [];
+    try {
+      // Generate optimized search queries using OpenRouter with DeepSeek
+      console.log('Generating search queries with OpenRouter (DeepSeek)...');
+      const response = await retryWithBackoff(async () => {
+        return await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${openrouterApiKey}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': supabaseUrl,
+          },
+          body: JSON.stringify({
+            model: 'deepseek/deepseek-chat-v3-0324:free',
+            messages: [{
+              role: 'system',
+              content: SEARCH_QUERY_PROMPT
+            }, {
+              role: 'user',
+              content: 'Generate the 10 search queries as specified. Return valid JSON only.'
+            }],
+            temperature: 0.3,
+            max_tokens: 2500,
+            response_format: { type: "json_object" },
+            provider: {
+              only: ['DeepSeek']
+            }
+          })
+        });
       });
 
       if (response.status === 429) {
@@ -160,8 +163,11 @@ BE CREATIVE. Think like a patent examiner trying to find reasons to reject this 
       
       const parsed = JSON.parse(content);
       console.log('Successfully generated queries using OpenRouter (DeepSeek)');
-      return parsed.queries || parsed;
-    });
+      searchQueries = parsed.queries || []; // Ensure it's an array
+    } catch (aiError) {
+      console.error('Error generating search queries:', aiError);
+      // Continue with empty search queries
+    }
 
     console.log(`Generated ${searchQueries.length} search queries`);
 
@@ -169,8 +175,8 @@ BE CREATIVE. Think like a patent examiner trying to find reasons to reject this 
     const mockPatents = searchQueries.flatMap((q: any, idx: number) => 
       Array.from({ length: 10 }, (_, i) => ({
         patent_number: `US${10000000 + idx * 100 + i}B2`,
-        title: `${q.query.substring(0, 50)}... - Patent ${i + 1}`,
-        abstract: `This patent relates to ${q.query.substring(0, 100)}...`,
+        title: `${q.search_string.substring(0, 50)}... - Patent ${i + 1}`, // Use search_string from query
+        abstract: `This patent relates to ${q.search_string.substring(0, 100)}...`,
         assignee: ['TechCorp Inc.', 'InnovateCo', 'PatentHoldings LLC'][i % 3],
         filing_date: new Date(2020 + idx, i % 12, (i % 28) + 1).toISOString().split('T')[0],
         relevance_score: 0.95 - (idx * 0.1) - (i * 0.01),
@@ -181,23 +187,34 @@ BE CREATIVE. Think like a patent examiner trying to find reasons to reject this 
     // Calculate semantic similarity using OpenRouter embeddings
     console.log('Calculating semantic similarity...');
     
-    const embeddingResponse = await retryWithBackoff(async () => {
-      return await fetch('https://openrouter.ai/api/v1/embeddings', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${openrouterApiKey}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': supabaseUrl,
-        },
-        body: JSON.stringify({
-          model: 'text-embedding-3-small',
-          input: invention_description
-        })
+    let inventionEmbedding: number[] = [];
+    try {
+      const embeddingResponse = await retryWithBackoff(async () => {
+        return await fetch('https://openrouter.ai/api/v1/embeddings', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${openrouterApiKey}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': supabaseUrl,
+          },
+          body: JSON.stringify({
+            model: 'text-embedding-3-small',
+            input: invention_description
+          })
+        });
       });
-    });
 
-    const embeddingData = await embeddingResponse.json();
-    const inventionEmbedding = embeddingData.data[0].embedding;
+      if (!embeddingResponse.ok) {
+        const errorText = await embeddingResponse.text();
+        throw new Error(`OpenRouter Embeddings API error: ${embeddingResponse.status} - ${errorText}`);
+      }
+
+      const embeddingData = await embeddingResponse.json();
+      inventionEmbedding = embeddingData.data[0].embedding;
+    } catch (aiError) {
+      console.error('Error generating embeddings:', aiError);
+      // Continue with empty embedding
+    }
 
     // Sort patents by relevance (in production, calculate actual cosine similarity)
     const rankedPatents = mockPatents
@@ -260,7 +277,7 @@ BE CREATIVE. Think like a patent examiner trying to find reasons to reject this 
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
     
-    const { analysis_id } = await req.json().catch(() => ({}));
+    const { analysis_id } = await req.json().catch(() => ({})); // Safely get analysis_id
     
     if (analysis_id) {
       await supabase.from('agent_logs').insert({

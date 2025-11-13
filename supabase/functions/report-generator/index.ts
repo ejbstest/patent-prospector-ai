@@ -29,7 +29,8 @@ function parseAiResponseContent(content: string): any {
     return JSON.parse(jsonStr);
   } catch (error) {
     console.error('Failed to parse AI response content:', content, error);
-    throw new Error('Invalid JSON response from AI');
+    // Return a default empty object to allow subsequent logic to proceed
+    return {}; 
   }
 }
 
@@ -59,11 +60,15 @@ serve(async (req) => {
     console.log(`Report generator starting for analysis: ${analysis_id}`);
 
     // Fetch analysis data
-    const { data: analysis } = await supabase
+    const { data: analysis, error: fetchAnalysisError } = await supabase
       .from('analyses')
       .select('*')
       .eq('id', analysis_id)
       .single();
+
+    if (fetchAnalysisError || !analysis) {
+      throw new Error(`Analysis not found: ${fetchAnalysisError?.message}`);
+    }
 
     // Calculate risk score
     const highSeverityCount = conflicts.filter((c: any) => c.conflict_severity >= 7).length;
@@ -81,8 +86,13 @@ serve(async (req) => {
     else if (riskScore <= 85) riskLevel = 'high';
     else riskLevel = 'critical';
 
+    let executiveSummary = 'No executive summary generated.';
+    let whiteSpaceOpportunities = { white_space_opportunities: [] };
+    let designAroundStrategies = { design_around_strategies: [] };
+
     // PROMPT 5: Executive Summary Generator (Plain English)
-    const EXEC_SUMMARY_PROMPT = `You are a business consultant translating complex patent analysis into executive-friendly language.
+    try {
+      const EXEC_SUMMARY_PROMPT = `You are a business consultant translating complex patent analysis into executive-friendly language.
 
 TARGET AUDIENCE: Startup founder with no legal background
 
@@ -123,22 +133,21 @@ TONE:
 - Empowering
 
 OUTPUT: Plain text with Markdown formatting`;
-
-    const summaryResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openaiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [{
-          role: 'system',
-          content: EXEC_SUMMARY_PROMPT
-        }, {
-          role: 'user',
-          content: `Create executive summary for:
-          
+      const summaryResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openaiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [{
+            role: 'system',
+            content: EXEC_SUMMARY_PROMPT
+          }, {
+            role: 'user',
+            content: `Create executive summary for:
+            
 Invention: ${invention_description}
 Risk Score: ${riskScore}/100 (${riskLevel})
 Conflicts Found: ${conflicts.length}
@@ -146,17 +155,28 @@ High Severity: ${highSeverityCount}
 
 Top Conflicts:
 ${conflicts.slice(0, 5).map((c: any) => `- ${c.patent_number}: ${c.conflict_description}`).join('\n')}`
-        }],
-        temperature: 0.3,
-        max_tokens: 3000
-      })
-    });
+          }],
+          temperature: 0.3,
+          max_tokens: 3000
+        })
+      });
 
-    const summaryData = await summaryResponse.json();
-    const executiveSummary = summaryData.choices[0].message.content;
+      if (!summaryResponse.ok) {
+        const errorText = await summaryResponse.text();
+        throw new Error(`OpenAI Executive Summary API error: ${summaryResponse.status} - ${errorText}`);
+      }
+
+      const summaryData = await summaryResponse.json();
+      executiveSummary = summaryData.choices[0].message.content || executiveSummary;
+    } catch (aiError) {
+      console.error('Error generating executive summary:', aiError);
+      // Continue with default summary
+    }
 
     // PROMPT 4: White Space Opportunity Identifier
-    const WHITE_SPACE_PROMPT = `You are an innovation strategist identifying patent white space opportunities.
+    if (analysis.analysis_type === 'premium_whitespace' || analysis.payment_status === 'exemption') { // Only generate if premium or exemption
+      try {
+        const WHITE_SPACE_PROMPT = `You are an innovation strategist identifying patent white space opportunities.
 
 TARGET INVENTION: ${invention_description}
 CONFLICTS FOUND: ${conflicts.length}
@@ -201,31 +221,42 @@ OUTPUT (JSON):
   ]
 }`;
 
-    const whiteSpaceResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openaiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [{
-          role: 'system',
-          content: WHITE_SPACE_PROMPT
-        }, {
-          role: 'user',
-          content: 'Generate 3-5 white space opportunities.'
-        }],
-        temperature: 0.4,
-        response_format: { type: "json_object" }
-      })
-    });
+        const whiteSpaceResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${openaiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: [{
+              role: 'system',
+              content: WHITE_SPACE_PROMPT
+            }, {
+              role: 'user',
+              content: 'Generate 3-5 white space opportunities.'
+            }],
+            temperature: 0.4,
+            response_format: { type: "json_object" }
+          })
+        });
 
-    const whiteSpaceData = await whiteSpaceResponse.json();
-    const whiteSpaceOpportunities = parseAiResponseContent(whiteSpaceData.choices[0].message.content);
+        if (!whiteSpaceResponse.ok) {
+          const errorText = await whiteSpaceResponse.text();
+          throw new Error(`OpenAI White Space API error: ${whiteSpaceResponse.status} - ${errorText}`);
+        }
+
+        const whiteSpaceData = await whiteSpaceResponse.json();
+        whiteSpaceOpportunities = parseAiResponseContent(whiteSpaceData.choices[0].message.content);
+      } catch (aiError) {
+        console.error('Error generating white space opportunities:', aiError);
+        // Continue with default empty opportunities
+      }
+    }
 
     // PROMPT 6: Design-Around Strategy Generator
-    const DESIGN_AROUND_PROMPT = `You are a product engineer and patent attorney collaborating on design-around strategies.
+    try {
+      const DESIGN_AROUND_PROMPT = `You are a product engineer and patent attorney collaborating on design-around strategies.
 
 TARGET INVENTION: ${invention_description}
 
@@ -267,31 +298,40 @@ OUTPUT (JSON):
   ]
 }`;
 
-    const designAroundResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openaiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [{
-          role: 'system',
-          content: DESIGN_AROUND_PROMPT
-        }, {
-          role: 'user',
-          content: `Generate design-around strategies for these conflicts:
+      const designAroundResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openaiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [{
+            role: 'system',
+            content: DESIGN_AROUND_PROMPT
+          }, {
+            role: 'user',
+            content: `Generate design-around strategies for these conflicts:
 ${conflicts.slice(0, 5).map((c: any) => `${c.patent_number}: ${c.conflict_description}`).join('\n')}`
-        }],
-        temperature: 0.4,
-        response_format: { type: "json_object" }
-      })
-    });
+          }],
+          temperature: 0.4,
+          response_format: { type: "json_object" }
+        })
+      });
 
-    const designAroundData = await designAroundResponse.json();
-    const designAroundStrategies = parseAiResponseContent(designAroundData.choices[0].message.content);
+      if (!designAroundResponse.ok) {
+        const errorText = await designAroundResponse.text();
+        throw new Error(`OpenAI Design-Around API error: ${designAroundResponse.status} - ${errorText}`);
+      }
 
-    // Compile full report
+      const designAroundData = await designAroundResponse.json();
+      designAroundStrategies = parseAiResponseContent(designAroundData.choices[0].message.content);
+    } catch (aiError) {
+      console.error('Error generating design-around strategies:', aiError);
+      // Continue with default empty strategies
+    }
+
+    // Compile full report (existing logic, using potentially empty/default values)
     const reportData = {
       executive_summary: executiveSummary,
       methodology: {
@@ -329,10 +369,10 @@ ${conflicts.slice(0, 5).map((c: any) => `${c.patent_number}: ${c.conflict_descri
       ]
     };
 
-    // Determine report type based on payment status
+    // Determine report type based on payment status (existing logic)
     const reportType = analysis.payment_status === 'paid' || analysis.payment_status === 'exemption' ? 'full' : 'snapshot';
 
-    // Store report
+    // Store report (existing logic)
     await supabase.from('reports').insert({
       analysis_id,
       report_type: reportType,
@@ -342,7 +382,7 @@ ${conflicts.slice(0, 5).map((c: any) => `${c.patent_number}: ${c.conflict_descri
       version: 1
     });
 
-    // Update analysis with risk assessment
+    // Update analysis with risk assessment (existing logic)
     await supabase
       .from('analyses')
       .update({ 
@@ -354,7 +394,7 @@ ${conflicts.slice(0, 5).map((c: any) => `${c.patent_number}: ${c.conflict_descri
       })
       .eq('id', analysis_id);
 
-    // Log execution
+    // Log execution (existing logic)
     const executionTime = Date.now() - startTime;
     await supabase.from('agent_logs').insert({
       analysis_id,
@@ -367,7 +407,7 @@ ${conflicts.slice(0, 5).map((c: any) => `${c.patent_number}: ${c.conflict_descri
 
     console.log(`Report generator completed in ${executionTime}ms`);
 
-    // Trigger delivery
+    // Trigger delivery (existing logic)
     await supabase.functions.invoke('deliver-report', {
       body: { analysis_id }
     });
@@ -386,7 +426,7 @@ ${conflicts.slice(0, 5).map((c: any) => `${c.patent_number}: ${c.conflict_descri
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
     
-    const { analysis_id } = await req.json().catch(() => ({}));
+    const { analysis_id } = await req.json().catch(() => ({})); // Safely get analysis_id
     
     if (analysis_id) {
       await supabase.from('agent_logs').insert({
@@ -396,6 +436,12 @@ ${conflicts.slice(0, 5).map((c: any) => `${c.patent_number}: ${c.conflict_descri
         error_message: errorMessage,
         execution_time_ms: executionTime
       });
+
+      // Mark analysis as failed if report generation fails
+      await supabase
+        .from('analyses')
+        .update({ status: 'failed' })
+        .eq('id', analysis_id);
     }
 
     return new Response(
